@@ -27,8 +27,7 @@ schemars = "1"
 ts-rs = { version = "7", features = ["no-serde-warnings"] }
 faer = { version = "0.24", optional = true }
 pyo3 = { version = "0.30", optional = true }
-# Upstream supports PyO3 0.30; the latest registry release still excludes it.
-pyo3-stub-gen = { version = "0.23.3", git = "https://github.com/Jij-Inc/pyo3-stub-gen.git", rev = "cd165fe4d142f4203ff48fc23c20ba31824b969f", optional = true }
+pyo3-stub-gen = { version = "0.23.2", optional = true }
 
 [target.'cfg(windows)'.dependencies.pyo3]
 version = "0.30"
