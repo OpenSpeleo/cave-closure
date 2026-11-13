@@ -7,249 +7,174 @@ on:
 permissions:
   contents: read
 
+env:
+  MINIMUM_PYTHON_VERSION: "3.11"
+  # abi3t starts here; Python 3.14t is built separately as legacy.
+  MINIMUM_FT_PYTHON_VERSION: "3.15"
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
-  build-manylinux:
-    needs: build-sdist
+  validate-release:
+    name: Validate release tag
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Require a version tag matching the package
+        run: |
+          python3 - <<'PYTHON'
+          import os
+          import re
+          import tomllib
+          from pathlib import Path
+
+          tag = os.environ["GITHUB_REF_NAME"]
+          component = r"(0|[1-9][0-9]*)"
+          version_pattern = rf"v{component}\.{component}\.{component}"
+          if (
+              os.environ["GITHUB_REF_TYPE"] != "tag"
+              or re.fullmatch(version_pattern, tag) is None
+          ):
+              raise SystemExit("release requires a tag named vA.B.C")
+
+          package = tomllib.loads(Path("Cargo.toml").read_text())["package"]
+          if tag != f"v{package['version']}":
+              raise SystemExit(
+                  "release tag does not match the Cargo package version"
+              )
+          PYTHON
+
+  # ======================================== #
+  # Python SDist
+  # ======================================== #
+  build-python-sdist:
+    needs: validate-release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Install the toolchain declared by rust-toolchain.toml
+        run: rustup show
+
+      - name: Build sdist
+        uses: PyO3/maturin-action@v1
+        with:
+          command: sdist
+          args: --out dist
+
+      - name: Upload sdist
+        uses: actions/upload-artifact@v7
+        with:
+          name: wheels-sdist
+          path: dist
+          if-no-files-found: error
+
+  # ======================================== #
+  # Python Wheels
+  # ======================================== #
+  build-python-abi3-wheels:
+    name: abi3 (${{ matrix.platform.family }}, ${{ matrix.platform.target }})
+    needs: validate-release
     runs-on: ${{ matrix.platform.runner }}
     strategy:
       fail-fast: false
       matrix:
+        # One abi3 wheel per platform supports the minimum Python and newer.
         platform:
-          # https://github.com/PyO3/maturin-action/blob/main/src/index.ts#L217
           - runner: ubuntu-latest
             target: x86_64
+            family: manylinux
           - runner: ubuntu-latest
             target: x86
+            family: manylinux
           - runner: ubuntu-latest
             target: aarch64
+            family: manylinux
           - runner: ubuntu-latest
             target: armv7
+            family: manylinux
           - runner: ubuntu-latest
             target: ppc64le
+            family: manylinux
           - runner: ubuntu-latest
             target: ppc64
-        python: ["3.11", "3.12", "3.13", "3.14", "3.15"]
-
-    steps:
-      - uses: actions/download-artifact@v8
-        with:
-          name: wheels-sdist
-          path: source
-
-      - name: Extract the tested source distribution
-        shell: bash
-        run: |
-          mkdir extracted
-          tar -xzf source/*.tar.gz -C extracted --strip-components=1
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@v7
-        with:
-          # Wheel builds do not populate uv's dependency cache.
-          enable-cache: false
-          python-version: ${{ matrix.python }}
-
-      - name: Build wheels
-        uses: PyO3/maturin-action@v1
-        with:
-          working-directory: extracted
-          target: ${{ matrix.platform.target }}
-          args: >-
-            --locked --release --features abi3 --out ../dist --interpreter
-            python${{ matrix.python }}
-          sccache: ${{ !startsWith(github.ref, 'refs/tags/') }}
-          manylinux: auto
-
-      - name: Upload wheels
-        # The abi3 filename is identical across the ordinary Python matrix.
-        if: matrix.python == '3.11'
-        uses: actions/upload-artifact@v7
-        with:
-          name: "wheels-manylinux-${{ matrix.platform.target }}-\
-            ${{ matrix.python }}"
-          path: dist
-          if-no-files-found: error
-
-  build-musllinux:
-    needs: build-sdist
-    runs-on: ${{ matrix.platform.runner }}
-    strategy:
-      fail-fast: false
-      matrix:
-        platform:
-          # https://github.com/PyO3/maturin-action/blob/main/src/index.ts#L229
+            family: manylinux
           - runner: ubuntu-latest
             target: x86_64
+            family: musllinux
           - runner: ubuntu-latest
             target: x86
+            family: musllinux
           - runner: ubuntu-latest
             target: aarch64
+            family: musllinux
           - runner: ubuntu-latest
             target: armv7
+            family: musllinux
           - runner: ubuntu-latest
             target: ppc64le
-        python: ["3.11", "3.12", "3.13", "3.14", "3.15"]
-
-    steps:
-      - uses: actions/download-artifact@v8
-        with:
-          name: wheels-sdist
-          path: source
-
-      - name: Extract the tested source distribution
-        shell: bash
-        run: |
-          mkdir extracted
-          tar -xzf source/*.tar.gz -C extracted --strip-components=1
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@v7
-        with:
-          # Wheel builds do not populate uv's dependency cache.
-          enable-cache: false
-          python-version: ${{ matrix.python }}
-
-      - name: Build wheels
-        uses: PyO3/maturin-action@v1
-        with:
-          working-directory: extracted
-          target: ${{ matrix.platform.target }}
-          args: >-
-            --locked --release --features abi3 --out ../dist --interpreter
-            python${{ matrix.python }}
-          sccache: ${{ !startsWith(github.ref, 'refs/tags/') }}
-          manylinux: musllinux_1_2
-
-      - name: Upload wheels
-        # The abi3 filename is identical across the ordinary Python matrix.
-        if: matrix.python == '3.11'
-        uses: actions/upload-artifact@v7
-        with:
-          name: "wheels-musllinux-${{ matrix.platform.target }}-\
-            ${{ matrix.python }}"
-          path: dist
-          if-no-files-found: error
-
-  build-windows:
-    needs: build-sdist
-    runs-on: ${{ matrix.platform.runner }}
-    strategy:
-      fail-fast: false
-      matrix:
-        platform:
-          # https://github.com/PyO3/maturin-action/blob/main/src/index.ts#L240
+            family: musllinux
           - runner: windows-latest
             target: x86_64
+            family: windows
           - runner: windows-latest
             target: x86
+            family: windows
           - runner: windows-11-arm
             target: aarch64
-        python: ["3.11", "3.12", "3.13", "3.14", "3.15"]
-
-    steps:
-      - uses: actions/download-artifact@v8
-        with:
-          name: wheels-sdist
-          path: source
-
-      - name: Extract the tested source distribution
-        shell: bash
-        run: |
-          mkdir extracted
-          tar -xzf source/*.tar.gz -C extracted --strip-components=1
-
-      - name: Install uv (x86 hosts)
-        if: ${{ matrix.platform.runner != 'windows-11-arm' }}
-        uses: astral-sh/setup-uv@v7
-        with:
-          enable-cache: false
-          python-version: ${{ matrix.python }}
-
-      - name: Install uv (ARM host)
-        if: ${{ matrix.platform.runner == 'windows-11-arm' }}
-        uses: astral-sh/setup-uv@v7
-        with:
-          enable-cache: false
-          python-version: ${{ matrix.python }}
-
-      - name: Build wheels
-        uses: PyO3/maturin-action@v1
-        with:
-          working-directory: extracted
-          target: ${{ matrix.platform.target }}
-          args: >-
-            --locked --release --features abi3 --out ../dist --interpreter
-            python${{ matrix.python }}
-          sccache: ${{ !startsWith(github.ref, 'refs/tags/') }}
-
-      - name: Upload wheels
-        # The abi3 filename is identical across the ordinary Python matrix.
-        if: matrix.python == '3.11'
-        uses: actions/upload-artifact@v7
-        with:
-          name: "wheels-windows-${{ matrix.platform.target }}-\
-            ${{ matrix.python }}"
-          path: dist
-          if-no-files-found: error
-
-  build-macos:
-    needs: build-sdist
-    runs-on: ${{ matrix.platform.runner }}
-    strategy:
-      fail-fast: false
-      matrix:
-        platform:
-          # https://github.com/PyO3/maturin-action/blob/main/src/index.ts#L211
+            family: windows
           - runner: macos-latest
             target: x86_64
+            family: macos
           - runner: macos-latest
             target: aarch64
-        python: ["3.11", "3.12", "3.13", "3.14", "3.15"]
+            family: macos
 
     steps:
-      - uses: actions/download-artifact@v8
+      - uses: actions/checkout@v7
         with:
-          name: wheels-sdist
-          path: source
-
-      - name: Extract the tested source distribution
-        shell: bash
-        run: |
-          mkdir extracted
-          tar -xzf source/*.tar.gz -C extracted --strip-components=1
+          persist-credentials: false
 
       - name: Install uv
         uses: astral-sh/setup-uv@v7
         with:
-          # Wheel builds do not populate uv's dependency cache.
           enable-cache: false
-          python-version: ${{ matrix.python }}
+          python-version: ${{ env.MINIMUM_PYTHON_VERSION }}
 
       - name: Build wheels
         uses: PyO3/maturin-action@v1
         with:
-          working-directory: extracted
           target: ${{ matrix.platform.target }}
           args: >-
-            --locked --release --features abi3 --out ../dist --interpreter
-            python${{ matrix.python }}
-          sccache: ${{ !startsWith(github.ref, 'refs/tags/') }}
+            --locked --release --features
+            abi3,sparse-direct,pyo3/extension-module --out dist --interpreter
+            python${{ env.MINIMUM_PYTHON_VERSION }}
+          manylinux: >-
+            ${{ matrix.platform.family == 'musllinux' && 'musllinux_1_2' ||
+            'auto' }}
+          sccache: false
 
       - name: Upload wheels
-        # The abi3 filename is identical across the ordinary Python matrix.
-        if: matrix.python == '3.11'
         uses: actions/upload-artifact@v7
         with:
-          name: wheels-macos-${{ matrix.platform.target }}-${{ matrix.python }}
+          name:
+            wheels-abi3-${{ matrix.platform.family }}-${{ matrix.platform.target
+            }}
           path: dist
           if-no-files-found: error
 
-  build-freethreaded:
-    needs: build-sdist
+  build-python-freethreaded-wheels:
+    name:
+      ${{ matrix.abi }} (${{ matrix.platform.runner }}, ${{
+      matrix.platform.target }})
+    needs: validate-release
     runs-on: ${{ matrix.platform.runner }}
     strategy:
       fail-fast: false
@@ -265,86 +190,61 @@ jobs:
             target: x86_64
           - runner: macos-latest
             target: aarch64
-        python: ["3.14t", "3.15t"]
+        # Legacy has no stable ABI; abi3t covers the configured minimum onward.
+        abi: [abi3t, legacy-3.14t]
     steps:
-      - uses: actions/download-artifact@v8
+      - uses: actions/checkout@v7
         with:
-          name: wheels-sdist
-          path: source
+          persist-credentials: false
 
-      - name: Extract the tested source distribution
+      - name: Select free-threaded Python
+        id: python
         shell: bash
+        env:
+          ABI: ${{ matrix.abi }}
         run: |
-          mkdir extracted
-          tar -xzf source/*.tar.gz -C extracted --strip-components=1
+          if [ "$ABI" = "abi3t" ]; then
+            echo "version=${MINIMUM_FT_PYTHON_VERSION}t" >> "$GITHUB_OUTPUT"
+          else
+            echo "version=3.14t" >> "$GITHUB_OUTPUT"
+          fi
 
-      - uses: actions/setup-python@v6
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
         with:
-          python-version: ${{ matrix.python }}
+          enable-cache: false
+          python-version: ${{ steps.python.outputs.version }}
 
       - name: Build wheels
         uses: PyO3/maturin-action@v1
         with:
-          working-directory: extracted
           target: ${{ matrix.platform.target }}
           args: >-
-            --locked --release --out ../dist --interpreter python${{
-            matrix.python }}
+            --locked --release ${{ matrix.abi == 'abi3t' && '--features
+            abi3t,sparse-direct,pyo3/extension-module' || '' }} --out dist
+            --interpreter python${{ steps.python.outputs.version }}
           manylinux: auto
-          sccache: ${{ !startsWith(github.ref, 'refs/tags/') }}
+          sccache: false
 
       - name: Upload wheels
         uses: actions/upload-artifact@v7
         with:
           name:
             wheels-freethreaded-${{ matrix.platform.runner }}-${{
-            matrix.platform.target }}-${{ matrix.python }}
+            matrix.platform.target }}-${{ matrix.abi }}
           path: dist
           if-no-files-found: error
 
-  build-sdist:
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-    steps:
-      - uses: actions/checkout@v7
-
-      - name: Install the toolchain declared by rust-toolchain.toml
-        run: rustup show
-
-      - name: Check release tag against the package version
-        if: startsWith(github.ref, 'refs/tags/')
-        run: |
-          python3 - <<'PYTHON'
-          import os
-          import tomllib
-          from pathlib import Path
-          package = tomllib.loads(Path("Cargo.toml").read_text())["package"]
-          version = package["version"]
-          if os.environ["GITHUB_REF_NAME"] != f"v{version}":
-              raise SystemExit(
-                  "release tag does not match the Cargo package version"
-              )
-          PYTHON
-
-      - name: Build sdist
-        uses: PyO3/maturin-action@v1
-        with:
-          command: sdist
-          args: --out dist
-
-      - name: Upload sdist
-        uses: actions/upload-artifact@v7
-        with:
-          name: wheels-sdist
-          path: dist
-          if-no-files-found: error
-
-  build-crate:
-    needs: build-sdist
+  # ======================================== #
+  # Rust Crate
+  # ======================================== #
+  build-rust-crate:
+    needs: validate-release
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - name: Install the toolchain declared by rust-toolchain.toml
         run: rustup show
@@ -362,16 +262,16 @@ jobs:
           path: target/package/*.crate
           if-no-files-found: error
 
+  # ======================================== #
+  # Verification
+  # ======================================== #
   verify-artifacts:
     needs:
       [
-        build-manylinux,
-        build-musllinux,
-        build-windows,
-        build-macos,
-        build-freethreaded,
-        build-sdist,
-        build-crate,
+        build-python-abi3-wheels,
+        build-python-freethreaded-wheels,
+        build-python-sdist,
+        build-rust-crate,
       ]
     runs-on: ubuntu-latest
     steps:
@@ -402,11 +302,14 @@ jobs:
           path: provenance
           if-no-files-found: error
 
+  # ======================================== #
+  # Publication
+  # ======================================== #
   publish-crate:
     needs: verify-artifacts
+    name: Release Crates.IO
     runs-on: ubuntu-latest
     environment: crates-io
-    if: startsWith(github.ref, 'refs/tags/v')
     permissions:
       contents: read
       id-token: write
@@ -437,12 +340,9 @@ jobs:
 
   publish-release:
     needs: verify-artifacts
-    name: Release
+    name: Release PyPI.org
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: true
     environment: pypi
-    if: startsWith(github.ref, 'refs/tags/v')
     permissions:
       # Use to sign the release artifacts
       id-token: write

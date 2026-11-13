@@ -64,6 +64,17 @@ Python sources in `src_python/`. The optional `python` feature enables the
 bindings; Maturin enables it and all numerical backends for Python builds. Rust
 consumers use the same library without enabling Python.
 
+Release wheels use three ABI paths: `abi3` for ordinary CPython, `abi3t` for
+free-threaded CPython 3.15 and newer, and a version-specific legacy wheel for
+free-threaded CPython 3.14. Python 3.14 predates the
+[free-threaded stable ABI](https://peps.python.org/pep-0803/) and cannot load an
+`abi3t` wheel. In `.github/workflows/release.yml`, `MINIMUM_PYTHON_VERSION`
+selects the `abi3` build interpreter and `MINIMUM_FT_PYTHON_VERSION` selects the
+`abi3t` build interpreter; the legacy 3.14t build remains separate. The
+corresponding ABI floors are declared by the `abi3` and `abi3t` features in
+`Cargo.toml`. CI continues to test each supported Python version, including both
+free-threaded interpreters.
+
 Run checks directly from this tree:
 
 ```sh
@@ -72,16 +83,16 @@ cargo fmt --all -- --check
 cargo clippy --locked --workspace --all-targets --all-features -- -D warnings
 uv run maturin build --features abi3 --out dist
 uv run pytest
-uv run cargo run --locked --features generate-stubs --bin stub_gen
-uv run ruff check --fix src_python/cave_closure/_native/__init__.pyi
-uv run ruff format src_python/cave_closure/_native/__init__.pyi
+uv run --frozen python scripts/generate_stubs.py --check
 ```
 
 Native Python stubs in `src_python/cave_closure/_native/__init__.pyi` are
-generated from Rust using `pyo3-stub-gen`; regenerate them with the command
-above after changing a binding. `src_python/cave_closure/__init__.pyi`
-re-exports the generated API and describes the Python helpers. CI checks
-generated stubs for drift.
+generated from Rust using `pyo3-stub-gen`. Run
+`uv run --frozen python scripts/generate_stubs.py` after changing a binding to
+regenerate and format them. Add `--check` to compare without modifying files.
+The `generate-stubs` pre-commit hook runs this check, including in CI.
+`src_python/cave_closure/__init__.pyi` re-exports the generated API and
+describes the Python helpers.
 
 See [the numerical contract](docs/numerics.md),
 [interchange contract](docs/interchange.md), and

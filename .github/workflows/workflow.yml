@@ -22,6 +22,13 @@ jobs:
     steps:
       - name: Checkout Code Repository
         uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          python-version: "3.14"
 
       - uses: j178/prek-action@v2
         with:
@@ -38,10 +45,15 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-latest, windows-latest, macos-latest]
     runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - name: Install the toolchain declared by rust-toolchain.toml
         run: |
@@ -68,49 +80,14 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-        python: ["3.11", "3.12", "3.13", "3.14", "3.15"]
+        python: ["3.11", "3.12", "3.13", "3.14", "3.15", "3.14t", "3.15t"]
 
     runs-on: ${{ matrix.os }}
 
     steps:
       - uses: actions/checkout@v7
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@v7
         with:
-          python-version: ${{ matrix.python }}
-
-      - name: Install the toolchain declared by rust-toolchain.toml
-        run: rustup show
-
-      - name: Install the package and test dependencies
-        run: |
-          uv sync --all-extras --frozen
-
-      - name: Verify generated Python stubs
-        run: |
-          uv run cargo run --locked --features generate-stubs --bin stub_gen
-          uv run ruff check --fix src_python/cave_closure/_native/__init__.pyi
-          uv run ruff format src_python/cave_closure/_native/__init__.pyi
-          git diff --exit-code -- src_python/cave_closure/_native/__init__.pyi
-
-      - name: Run tests
-        run: |
-          uv run python --version
-          uv run pytest
-
-  test-python-freethreaded:
-    if: github.ref_type != 'tag'
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-        python: ["3.14t", "3.15t"]
-
-    runs-on: ${{ matrix.os }}
-
-    steps:
-      - uses: actions/checkout@v7
+          persist-credentials: false
 
       - name: Install uv
         uses: astral-sh/setup-uv@v7
@@ -131,7 +108,7 @@ jobs:
 
   trigger-release:
     name: Trigger release
-    needs: [linter, test-rust, test-python, test-python-freethreaded]
+    needs: [linter, test-rust, test-python]
     if: github.event_name == 'push' && github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
     permissions:
@@ -140,6 +117,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
+          persist-credentials: false
           fetch-depth: 0
           fetch-tags: true
 

@@ -82,6 +82,13 @@ repos:
               truthy:
                 allowed-values: ['true', 'false', 'True', 'False', 'on']
 
+  - repo: https://github.com/zizmorcore/zizmor-pre-commit
+    # Zizmor version.
+    rev: v1.32.0
+    hooks:
+      # Run the linter.
+      - id: zizmor
+
   # ========================================================================= #
   #                           DEPENDENCY MANAGEMENT                           #
   # ========================================================================= #
@@ -133,6 +140,19 @@ repos:
     hooks:
       - id: cargo-machete
         args: [--with-metadata]
+
+  # -------------------------
+  # Python Stubs Generation
+  # -------------------------
+
+  - repo: local
+    hooks:
+      - id: generate-stubs
+        name: Check generated Python stubs
+        entry: uv run --frozen python scripts/generate_stubs.py --check
+        language: system
+        pass_filenames: false
+        always_run: true
 
   # -------------------------
   # Rust Formatting
