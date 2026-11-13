@@ -87,6 +87,13 @@ jobs:
         run: |
           uv sync --all-extras --frozen
 
+      - name: Verify generated Python stubs
+        run: |
+          uv run cargo run --locked --features generate-stubs --bin stub_gen
+          uv run ruff check --fix src_python/cave_closure/_native/__init__.pyi
+          uv run ruff format src_python/cave_closure/_native/__init__.pyi
+          git diff --exit-code -- src_python/cave_closure/_native/__init__.pyi
+
       - name: Run tests
         run: |
           uv run python --version

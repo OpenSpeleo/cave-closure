@@ -319,11 +319,11 @@ jobs:
           import os
           import tomllib
           from pathlib import Path
-          workspace = tomllib.loads(Path("Cargo.toml").read_text())["workspace"]
-          version = workspace["package"]["version"]
+          package = tomllib.loads(Path("Cargo.toml").read_text())["package"]
+          version = package["version"]
           if os.environ["GITHUB_REF_NAME"] != f"v{version}":
               raise SystemExit(
-                  "release tag does not match the Cargo workspace version"
+                  "release tag does not match the Cargo package version"
               )
           PYTHON
 

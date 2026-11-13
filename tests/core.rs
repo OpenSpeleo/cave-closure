@@ -33,6 +33,33 @@ fn reduced_equals_unreduced() {
         assert_eq!(a.value, b.value);
     }
 }
+
+#[cfg(feature = "sparse-direct")]
+#[test]
+fn direct_solvers_preserve_exact_zero_stationarity() {
+    let mut problem = tree();
+    problem.stations.truncate(2);
+    problem.controls.truncate(1);
+    problem.observations = [("ab", "A", "B"), ("ba", "B", "A")]
+        .into_iter()
+        .map(|(id, from, to)| Observation::Displacement {
+            id: id.into(),
+            from: from.into(),
+            to: to.into(),
+            value: [8.660254037844386, -5., 0.],
+            uncertainty: Uncertainty::Isotropic { sigma_m: 1. },
+            reading_ids: vec![],
+        })
+        .collect();
+    for backend in [LinearBackend::SparseQr, LinearBackend::SparseCholesky] {
+        problem.algorithm.backend = backend;
+        let result = solve(&problem, false);
+        result.require_converged().unwrap();
+        assert_eq!(result.coordinates[1].value, [0.; 3]);
+        assert_eq!(result.diagnostics.backward_error, 0.);
+        assert!((result.diagnostics.objective - 200.).abs() < 1e-12);
+    }
+}
 #[test]
 fn self_loop_is_constant() {
     let mut p = tree();

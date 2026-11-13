@@ -13,7 +13,7 @@ def test_tar_members_keep_posix_names_and_exact_bytes(tmp_path, monkeypatch, hos
     archive_path = tmp_path / "source.tar.gz"
     expected = {
         "tests/fixtures/controlled_tree.json": b'{"schema_version": 1}\n',
-        "crates/cave_closure/src/solve.rs": b"// source\r\n",
+        "src_rust/solve.rs": b"// source\r\n",
         "LICENSE": b"license\n",
     }
     with tarfile.open(archive_path, "w:gz") as archive:

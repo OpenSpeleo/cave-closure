@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "cave-closure"
-# Maturin reads the binding crate's inherited Cargo workspace version.
+# Maturin reads the version from Cargo.toml.
 dynamic = ["version"]
 description = "Explicit covariance-weighted cave survey adjustment"
 readme = "README.md"
@@ -12,7 +12,14 @@ requires-python = ">=3.11"
 license = "AGPL-3.0-or-later"
 
 [dependency-groups]
-dev = ["pytest>=9", "maturin>=1.12,<2", "numpy>=2", "scipy>=1.17", "jsonschema>=4", "ruff>=0.17,<1"]
+dev = [
+    "pytest>=9",
+    "maturin>=1.12,<2",
+    "numpy>=2",
+    "scipy>=1.17",
+    "jsonschema>=4",
+    "ruff>=0.17,<1"
+]
 
 [tool.uv]
 cache-keys = [
@@ -20,17 +27,16 @@ cache-keys = [
     { file = "Cargo.toml" },
     { file = "Cargo.lock" },
     { file = "rust-toolchain.toml" },
-    { file = "crates/**/Cargo.toml" },
-    { file = "crates/**/*.rs" },
-    { file = "python/**/*.py" },
-    { file = "python/**/*.pyi" },
-    { file = "python/**/py.typed" },
+    { file = "src_rust/**/*" },
+    { file = "src_python/**/*.py" },
+    { file = "src_python/**/*.pyi" },
+    { file = "src_python/**/py.typed" },
 ]
 
 [tool.maturin]
+features = ["python", "sparse-direct", "pyo3/extension-module"]
 editable-profile = "dev"
-manifest-path = "crates/cave_closure_py/Cargo.toml"
-python-source = "python"
+python-source = "src_python"
 module-name = "cave_closure._native"
 include = [
     { path = "rust-toolchain.toml", format = "sdist" },

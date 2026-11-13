@@ -8,11 +8,13 @@ from __future__ import annotations
 
 import struct
 import sys
+from enum import StrEnum
 from types import MappingProxyType
 
-from ._native import (
+from cave_closure._native import (
     CancellationToken,
     IncompleteResultError,
+    LoopClosureAlgorithm,
     Prepared,
     Report,
     SolveError,
@@ -23,6 +25,8 @@ from ._native import (
 
 __all__ = [
     "CancellationToken",
+    "Mode",
+    "LoopClosureAlgorithm",
     "Prepared",
     "Report",
     "ValidationError",
@@ -34,6 +38,13 @@ __all__ = [
     "prepare_buffers",
     "prepare_json",
 ]
+
+
+class Mode(StrEnum):
+    """Adjustment modes accepted by the array and buffer preparation APIs."""
+
+    SPATIAL = "spatial"
+    HORIZONTAL = "horizontal"
 
 
 def coordinates(result: Report):
@@ -75,7 +86,8 @@ def prepare_buffers(
     endpoints,
     displacements,
     covariances,
-    mode,
+    mode: Mode,
+    algorithm: LoopClosureAlgorithm = LoopClosureAlgorithm.LSE_REDUCED_PCG,
     preserved_z=None,
     controls=(),
     relationships=(),
@@ -111,6 +123,7 @@ def prepare_buffers(
         displacements,
         covariances,
         mode=mode,
+        algorithm=algorithm,
         preserved_z=preserved_z,
         controls=list(controls),
         relationships=list(relationships),

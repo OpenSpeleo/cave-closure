@@ -40,12 +40,3 @@ def test_schema_and_parser_both_reject_structural_invalidity(mutation):
         )
     with pytest.raises(ValueError):
         prepare_json(json.dumps(problem))
-
-
-def test_cargo_and_python_analytic_fixture_remain_identical():
-    assert (ROOT / "tests/fixtures/controlled_tree.json").read_bytes() == (
-        ROOT / "crates/cave_closure/tests/fixtures/controlled_tree.json"
-    ).read_bytes()
-    assert (ROOT / "LICENSE").read_bytes() == (
-        ROOT / "crates/cave_closure/LICENSE"
-    ).read_bytes()

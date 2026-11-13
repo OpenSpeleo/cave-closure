@@ -1,9 +1,10 @@
 # Artifact qualification and release boundaries
 
-The Cargo workspace package version is the single version authority. Ordinary
-CPython builds enable the binding `abi3` feature targeting the consumer minimum.
-Free-threaded builds omit that feature and target individual interpreters. The
-binding crate is unpublished. The core crate has no Python dependency.
+The Cargo package version is the single version authority. Ordinary
+CPython builds enable the `abi3` feature targeting the consumer minimum.
+Free-threaded builds omit that feature and target individual interpreters.
+Python bindings are enabled by the `python` feature. Rust consumers can use the
+solver without enabling Python.
 
 Candidate wheels are installed into temporary external environments for consumer
 validation. Persistent consumer registry declarations and standalone locks wait
@@ -31,7 +32,7 @@ Ordinary builds enable the stable ABI on every interpreter in the matrix; only
 the consumer-minimum row uploads each platform's wheel, avoiding duplicate
 filenames. Free-threaded jobs upload interpreter-specific wheels.
 
-The release workflow runs from a tag matching the Cargo workspace version. It
+The release workflow runs from a tag matching the Cargo package version. It
 builds and verifies the core crate and checks source correspondence against the
 sdist before either registry job can run. The crate publisher reconstructs and
 compares the tested archive before requesting credentials. Publishing uses
@@ -41,8 +42,8 @@ authentication.
 Configure trusted publishers for the actual upstream repository and
 `release.yml`: the PyPI publisher uses the `pypi` GitHub environment, and the
 crates.io publisher uses `crates-io`. Only those jobs receive OIDC permission.
-The Python binding crate remains unpublished. No persistent registry token is
-required. Registry-side publisher configuration, environment protection, and any
+The root Cargo package supplies both the Rust library and optional Python
+bindings. No persistent registry token is required. Registry-side publisher configuration, environment protection, and any
 initial crate bootstrap remain setup prerequisites; adding workflow files does
 not configure those services.
 
@@ -54,3 +55,10 @@ conflicting artifacts as a successful retry.
 The implementation is independently written under AGPL. No application solver
 source or research document is redistributed. Dependency licenses remain
 individually reviewable through Cargo manifests and the lockfile.
+
+The manifest currently pins upstream `pyo3-stub-gen` for compatibility with the
+PyO3 dependency. Cargo publication requires its matching registry release:
+Cargo removes Git sources when packaging and resolves declared versions from
+crates.io. Until that release exists, Python builds and source-based Rust
+consumers work, while the crate publication check remains gated by that upstream
+release. Keep the dependency version and Git revision together in `Cargo.toml`.

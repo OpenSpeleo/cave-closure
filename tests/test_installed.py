@@ -1,6 +1,8 @@
 """Common installed-artifact corpus; all reference systems are assembled independently."""
 
 import json
+import subprocess
+import sys
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
@@ -8,10 +10,20 @@ import numpy as np
 import pytest
 from cave_closure import (
     CancellationToken,
+    LoopClosureAlgorithm,
+    Mode,
+    coordinate_buffer,
     coordinates,
     prepare_arrays,
     prepare_buffers,
     prepare_json,
+)
+
+ALGORITHMS = (
+    LoopClosureAlgorithm.LSE_REDUCED_PCG,
+    LoopClosureAlgorithm.LSE_UNREDUCED_PCG,
+    LoopClosureAlgorithm.LSE_SPARSE_QR,
+    LoopClosureAlgorithm.LSE_SPARSE_CHOLESKY,
 )
 
 FIXTURE = Path(__file__).parent / "fixtures" / "controlled_tree.json"
@@ -37,12 +49,31 @@ def arrays():
         endpoints=np.array([[0, 1], [1, 2]], dtype=np.uint64),
         displacements=np.array([[10, 0, 0], [10, 0, 0]], dtype=np.float64),
         covariances=np.array([np.eye(3), 4 * np.eye(3)]),
-        mode="spatial",
+        mode=Mode.SPATIAL,
         controls=[
             ("a", 0, [0, 1, 2], [0.0, 0.0, 0.0], None),
             ("c", 2, [0, 1, 2], [21.0, 0.0, 0.0], None),
         ],
     )
+
+
+@pytest.mark.parametrize("prepare", [prepare_arrays, prepare_buffers])
+@pytest.mark.parametrize("mode", list(Mode))
+@pytest.mark.parametrize("algorithm", ALGORITHMS)
+@pytest.mark.parametrize("as_string", [False, True])
+def test_adjustment_modes(prepare, mode, algorithm, as_string):
+    args = arrays()
+    args["mode"] = mode.value if as_string else mode
+    args["algorithm"] = algorithm
+    args["controls"] = []
+    if mode is Mode.HORIZONTAL:
+        args["preserved_z"] = [5.0, 7.0, 9.0]
+    result = prepare(**args).solve()
+    result.require_converged()
+    positions = coordinates(result)
+    assert positions["B"][:2] == pytest.approx((10.0, 0.0))
+    expected_z = (5.0, 7.0, 9.0) if mode is Mode.HORIZONTAL else (0.0, 0.0, 0.0)
+    assert tuple(positions[station][2] for station in ["A", "B", "C"]) == expected_z
 
 
 def test_buffers_are_owned():
@@ -54,6 +85,25 @@ def test_buffers_are_owned():
     result = prepared.solve()
     del prepared
     assert coordinates(result)["B"][0] == pytest.approx(10.2)
+
+
+@pytest.mark.parametrize("prepare", [prepare_arrays, prepare_buffers])
+@pytest.mark.parametrize("algorithm", ALGORITHMS)
+def test_algorithm_selects_solver(prepare, algorithm):
+    result = prepare(**arrays(), algorithm=algorithm).solve()
+    result.require_converged()
+    diagnostics = json.loads(result.to_json())["diagnostics"]
+    reduced = algorithm == LoopClosureAlgorithm.LSE_REDUCED_PCG
+    iterative = algorithm == LoopClosureAlgorithm.LSE_UNREDUCED_PCG
+    assert diagnostics["kernel_unknowns"] == (0 if reduced else 3)
+    assert diagnostics["iterations"] == (1 if iterative else 0)
+    assert coordinates(result)["B"][0] == pytest.approx(10.2)
+
+
+@pytest.mark.parametrize("prepare", [prepare_arrays, prepare_buffers])
+def test_algorithm_requires_native_enum(prepare):
+    with pytest.raises(TypeError):
+        prepare(**arrays(), algorithm="lse_sparse_qr")
 
 
 @pytest.mark.parametrize(
@@ -88,8 +138,8 @@ def test_concurrent_and_cancelled_solves():
 
 
 @pytest.mark.parametrize("seed", range(12))
-@pytest.mark.parametrize("reduce", [False, True])
-def test_random_full_covariance_against_independent_dense_qr(seed, reduce):
+@pytest.mark.parametrize("algorithm", ALGORITHMS)
+def test_random_full_covariance_against_independent_dense_qr(seed, algorithm):
     rng = np.random.default_rng(seed)
     n = 12
     edges = [(i, i + 1) for i in range(n - 1)] + [
@@ -116,9 +166,10 @@ def test_random_full_covariance_against_independent_dense_qr(seed, reduce):
         edges,
         observed.tolist(),
         covariance.tolist(),
-        mode="spatial",
+        mode=Mode.SPATIAL,
+        algorithm=algorithm,
         controls=[("anchor", 0, [0, 1, 2], [0, 0, 0], None)],
-    ).solve(reduce=reduce)
+    ).solve()
     result.require_converged()
     actual = coordinates(result)
     values = np.array([actual[str(i)] for i in range(1, n)]).ravel()
@@ -138,8 +189,6 @@ def test_iteration_exhaustion_rejected_by_strict_api():
 
 
 def test_readonly_result_buffer_outlives_report():
-    from cave_closure import coordinate_buffer
-
     result = prepare_json(FIXTURE.read_text()).solve()
     view = coordinate_buffer(result)
     del result
@@ -150,9 +199,6 @@ def test_readonly_result_buffer_outlives_report():
 
 
 def test_standard_library_buffers_need_no_numpy_import():
-    import subprocess
-    import sys
-
     script = """
 import builtins
 original = builtins.__import__
@@ -162,12 +208,12 @@ def without_numpy(name, *args, **kwargs):
     return original(name, *args, **kwargs)
 builtins.__import__ = without_numpy
 from array import array
-from cave_closure import prepare_buffers, coordinates
+from cave_closure import Mode, prepare_buffers, coordinates
 endpoints = memoryview(array('Q', [0,1])).cast('B').cast('Q', shape=(1,2))
 displacements = memoryview(array('d', [10.,0.,0.])).cast('B').cast('d', shape=(1,3))
 covariances = memoryview(array('d', [1.,0.,0.,0.,1.,0.,0.,0.,1.])).cast('B').cast('d', shape=(1,3,3))
 prepared = prepare_buffers(station_ids=['A','B'], observation_ids=['ab'], endpoints=endpoints,
-                           displacements=displacements, covariances=covariances, mode='spatial')
+                           displacements=displacements, covariances=covariances, mode=Mode.SPATIAL)
 result = prepared.solve()
 result.require_converged()
 assert coordinates(result)['B'] == (10.,0.,0.)

@@ -34,7 +34,6 @@ def inspect(crate, sdist, wheel):
             raise ValueError(
                 f"sdist is missing required corpus/schema/documentation: {path}"
             )
-    core = "crates/cave_closure/"
     corpus_path = "tests/fixtures/corpus.json"
     if corpus_path not in source:
         raise ValueError("sdist is missing the persisted fixture manifest")
@@ -44,23 +43,24 @@ def inspect(crate, sdist, wheel):
                 raise ValueError(f"sdist is missing a corpus artifact: {filename}")
     for path in (
         "LICENSE",
-        "src/lib.rs",
-        "src/model.rs",
-        "src/prepare.rs",
-        "src/solve.rs",
-        "src/json.rs",
-        "src/normalize.rs",
+        "src_rust/lib.rs",
+        "src_rust/model.rs",
+        "src_rust/prepare.rs",
+        "src_rust/solve.rs",
+        "src_rust/json.rs",
+        "src_rust/normalize.rs",
         "tests/core.rs",
         "tests/fixtures/controlled_tree.json",
         "examples/fixture_results.rs",
     ):
-        if rust[path] != source[core + path]:
+        if rust[path] != source[path]:
             raise ValueError(f"crate/sdist source mismatch: {path}")
     with zipfile.ZipFile(wheel) as archive:
         files = set(archive.namelist())
         required = {
             "cave_closure/__init__.py",
             "cave_closure/__init__.pyi",
+            "cave_closure/_native/__init__.pyi",
             "cave_closure/py.typed",
         }
         if not required.issubset(files):

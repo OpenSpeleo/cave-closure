@@ -63,8 +63,8 @@ def verify_result(problem, reference, result, solver, *, system=None):
     The reference is the noisy problem's optimum, not its latent sampled geometry.
     Tolerances are numerical acceptance bounds, never golden-file bit equality.
     """
-    # Import lazily to keep reference generation independent of native execution.
-    from generate_graphs import design
+    # generate_graphs imports this module while defining the reference generator.
+    from generate_graphs import design  # noqa: PLC0415 - circular import
 
     assert result["schema_version"] == 1
     assert result["solver"] == solver

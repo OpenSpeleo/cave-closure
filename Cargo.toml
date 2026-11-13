@@ -1,16 +1,48 @@
-[workspace]
-members = ["crates/cave_closure", "crates/cave_closure_py"]
-default-members = ["crates/cave_closure"]
-resolver = "3"
-
-[workspace.package]
+[package]
+name = "cave-closure"
 version = "0.0.1"
 edition = "2024"
 license = "AGPL-3.0-or-later"
+description = "Explicit covariance-weighted cave survey adjustment in local ENU metres"
+readme = "README.md"
 
-[workspace.dependencies]
+[lib]
+name = "cave_closure"
+path = "src_rust/lib.rs"
+crate-type = ["cdylib", "rlib"]
+
+[features]
+python = ["dep:pyo3", "dep:pyo3-stub-gen"]
+generate-stubs = ["python"]
+abi3 = ["python", "pyo3/abi3-py311"]
+sparse-direct = ["dep:faer"]
+
+[dependencies]
 nalgebra = "0.35"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 thiserror = "2"
 schemars = "1"
+faer = { version = "0.24", optional = true }
+pyo3 = { version = "0.30", optional = true }
+# Upstream supports PyO3 0.30; the latest registry release still excludes it.
+pyo3-stub-gen = { version = "0.23.3", git = "https://github.com/Jij-Inc/pyo3-stub-gen.git", rev = "cd165fe4d142f4203ff48fc23c20ba31824b969f", optional = true }
+
+[target.'cfg(windows)'.dependencies.pyo3]
+version = "0.30"
+optional = true
+features = ["generate-import-lib"]
+
+[[bin]]
+name = "stub_gen"
+path = "src_rust/bin/stub_gen.rs"
+doc = false
+required-features = ["generate-stubs"]
+
+[[bench]]
+name = "networks"
+harness = false
+
+[[example]]
+name = "fixture_results"
+required-features = ["sparse-direct"]

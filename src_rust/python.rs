@@ -1,16 +1,19 @@
-use cave_closure::*;
+use crate::*;
 use pyo3::{
     exceptions::{PyRuntimeError, PyValueError},
     prelude::*,
+};
+use pyo3_stub_gen::derive::{
+    gen_stub_pyclass, gen_stub_pyclass_enum, gen_stub_pyfunction, gen_stub_pymethods,
 };
 use std::{
     sync::{Arc, mpsc},
     time::Duration,
 };
 
-pyo3::create_exception!(cave_closure, ValidationError, PyValueError);
-pyo3::create_exception!(cave_closure, SolveError, PyRuntimeError);
-pyo3::create_exception!(cave_closure, IncompleteResultError, SolveError);
+pyo3_stub_gen::create_exception!(cave_closure._native, ValidationError, PyValueError);
+pyo3_stub_gen::create_exception!(cave_closure._native, SolveError, PyRuntimeError);
+pyo3_stub_gen::create_exception!(cave_closure._native, IncompleteResultError, SolveError);
 
 fn error(e: Error) -> PyErr {
     match e {
@@ -19,10 +22,40 @@ fn error(e: Error) -> PyErr {
         _ => SolveError::new_err(e.to_string()),
     }
 }
+#[gen_stub_pyclass_enum]
+#[pyclass(eq, frozen, from_py_object, module = "cave_closure._native")]
+#[derive(Clone, Copy, PartialEq)]
+enum LoopClosureAlgorithm {
+    #[pyo3(name = "LSE_REDUCED_PCG")]
+    ReducedPcg,
+    #[pyo3(name = "LSE_UNREDUCED_PCG")]
+    UnreducedPcg,
+    #[pyo3(name = "LSE_SPARSE_QR")]
+    SparseQr,
+    #[pyo3(name = "LSE_SPARSE_CHOLESKY")]
+    SparseCholesky,
+}
+
+#[gen_stub_pymethods]
+#[pymethods]
+impl LoopClosureAlgorithm {
+    #[getter]
+    fn name(&self) -> &'static str {
+        match self {
+            Self::ReducedPcg => "LSE_REDUCED_PCG",
+            Self::UnreducedPcg => "LSE_UNREDUCED_PCG",
+            Self::SparseQr => "LSE_SPARSE_QR",
+            Self::SparseCholesky => "LSE_SPARSE_CHOLESKY",
+        }
+    }
+}
+
+#[gen_stub_pyclass]
 #[pyclass(frozen, module = "cave_closure._native")]
 struct CancellationToken {
     inner: SolveControl,
 }
+#[gen_stub_pymethods]
 #[pymethods]
 impl CancellationToken {
     #[new]
@@ -39,21 +72,25 @@ impl CancellationToken {
         self.inner.is_cancelled()
     }
 }
+#[gen_stub_pyclass]
 #[pyclass(frozen, module = "cave_closure._native")]
 struct Prepared {
     inner: Arc<PreparedProblem>,
+    reduce: bool,
 }
+#[gen_stub_pymethods]
 #[pymethods]
 impl Prepared {
-    #[pyo3(signature=(*, max_iterations=10000, reduce=true, cancellation=None))]
+    #[pyo3(signature=(*, max_iterations=10000, reduce=None, cancellation=None))]
     fn solve(
         &self,
         py: Python<'_>,
         max_iterations: usize,
-        reduce: bool,
+        reduce: Option<bool>,
         cancellation: Option<&CancellationToken>,
     ) -> PyResult<Report> {
         let prepared = Arc::clone(&self.inner);
+        let reduce = reduce.unwrap_or(self.reduce);
         let control = cancellation.map_or_else(SolveControl::default, |c| c.inner.clone());
         let worker_control = control.clone();
         let (sender, mut receiver) = mpsc::sync_channel(1);
@@ -97,10 +134,12 @@ impl Prepared {
         result.map(|inner| Report { inner }).map_err(error)
     }
 }
+#[gen_stub_pyclass]
 #[pyclass(frozen, module = "cave_closure._native")]
 struct Report {
     inner: SolveReport,
 }
+#[gen_stub_pymethods]
 #[pymethods]
 impl Report {
     #[getter]
@@ -130,6 +169,7 @@ impl Report {
         self.inner.to_json().map_err(error)
     }
 }
+#[gen_stub_pyfunction(module = "cave_closure._native")]
 #[pyfunction]
 #[pyo3(signature=(input, *, require_control=false, allow_shared_reading_approximation=false, max_stations=1000000, max_observations=4000000))]
 fn prepare_json(
@@ -151,14 +191,16 @@ fn prepare_json(
     )
     .map(|inner| Prepared {
         inner: Arc::new(inner),
+        reduce: true,
     })
     .map_err(error)
 }
 type ControlRow = (String, usize, Vec<usize>, Vec<f64>, Option<Vec<Vec<f64>>>);
 type RelationshipRow = (String, String, usize, usize, [f64; 3]);
+#[gen_stub_pyfunction(module = "cave_closure._native")]
 #[pyfunction]
 #[allow(clippy::too_many_arguments)]
-#[pyo3(signature=(station_ids, observation_ids, endpoints, displacements, covariances, *, mode, preserved_z=None, controls=vec![], relationships=vec![], reading_ids=None, provenance=vec![], require_control=false, allow_shared_reading_approximation=false))]
+#[pyo3(signature=(station_ids, observation_ids, endpoints, displacements, covariances, *, mode, algorithm=LoopClosureAlgorithm::ReducedPcg, preserved_z=None, controls=vec![], relationships=vec![], reading_ids=None, provenance=vec![], require_control=false, allow_shared_reading_approximation=false))]
 fn prepare_arrays(
     station_ids: Vec<String>,
     observation_ids: Vec<String>,
@@ -166,6 +208,7 @@ fn prepare_arrays(
     displacements: Vec<[f64; 3]>,
     covariances: Vec<[[f64; 3]; 3]>,
     mode: &str,
+    algorithm: LoopClosureAlgorithm,
     preserved_z: Option<Vec<f64>>,
     controls: Vec<ControlRow>,
     relationships: Vec<RelationshipRow>,
@@ -274,6 +317,20 @@ fn prepare_arrays(
             })
         })
         .collect::<PyResult<Vec<_>>>()?;
+    let (backend, reduce) = match algorithm {
+        LoopClosureAlgorithm::ReducedPcg => (LinearBackend::ReducedPcg, true),
+        LoopClosureAlgorithm::UnreducedPcg => (LinearBackend::ReducedPcg, false),
+        #[cfg(feature = "sparse-direct")]
+        LoopClosureAlgorithm::SparseQr => (LinearBackend::SparseQr, false),
+        #[cfg(feature = "sparse-direct")]
+        LoopClosureAlgorithm::SparseCholesky => (LinearBackend::SparseCholesky, false),
+        #[cfg(not(feature = "sparse-direct"))]
+        LoopClosureAlgorithm::SparseQr | LoopClosureAlgorithm::SparseCholesky => {
+            return Err(ValidationError::new_err(
+                "algorithm requires a build with the sparse-direct feature",
+            ));
+        }
+    };
     let p = NormalizedProblem {
         schema_version: 1,
         frame: Frame {
@@ -288,7 +345,7 @@ fn prepare_arrays(
         relationships,
         algorithm: Algorithm {
             objective: Objective::Gaussian,
-            backend: LinearBackend::ReducedPcg,
+            backend,
         },
     };
     prepare(
@@ -301,6 +358,7 @@ fn prepare_arrays(
     )
     .map(|inner| Prepared {
         inner: Arc::new(inner),
+        reduce,
     })
     .map_err(error)
 }
@@ -312,10 +370,31 @@ fn _native(m: &Bound<'_, PyModule>) -> PyResult<()> {
         "IncompleteResultError",
         m.py().get_type::<IncompleteResultError>(),
     )?;
+    m.add_class::<LoopClosureAlgorithm>()?;
     m.add_class::<Prepared>()?;
     m.add_class::<Report>()?;
     m.add_class::<CancellationToken>()?;
     m.add_function(wrap_pyfunction!(prepare_json, m)?)?;
     m.add_function(wrap_pyfunction!(prepare_arrays, m)?)?;
     Ok(())
+}
+
+/// Gather native API metadata using the package manifest.
+#[cfg(feature = "generate-stubs")]
+pub fn stub_info() -> pyo3_stub_gen::Result<pyo3_stub_gen::StubInfo> {
+    let mut info = pyo3_stub_gen::StubInfo::from_pyproject_toml(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("pyproject.toml"),
+    )?;
+    // stub-gen treats custom exception bases as builtins. This base belongs to
+    // our native module, so retain the actual runtime exception hierarchy.
+    let module = info.modules.get_mut("cave_closure._native").unwrap();
+    let exception = module
+        .class
+        .get_mut(&std::any::TypeId::of::<IncompleteResultError>())
+        .unwrap();
+    exception.bases = vec![pyo3_stub_gen::TypeInfo::locally_defined(
+        "SolveError",
+        "cave_closure._native".into(),
+    )];
+    Ok(info)
 }

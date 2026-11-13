@@ -4,9 +4,13 @@ pub mod json;
 mod model;
 pub mod normalize;
 mod prepare;
+#[cfg(feature = "python")]
+mod python;
 mod solve;
 pub use model::*;
 pub use prepare::{PreparedProblem, prepare};
+#[cfg(feature = "generate-stubs")]
+pub use python::stub_info;
 pub use solve::{SolveControl, Workspace};
 
 #[derive(Debug, thiserror::Error)]

@@ -750,6 +750,13 @@ fn direct(
     if control.is_cancelled() {
         return Err(Error::Incomplete(Termination::Cancelled));
     }
+    // Exact cancellation can make the normal right-hand side zero while QR
+    // returns roundoff-sized coordinates. The exact solution is then zero;
+    // retain it so a relative backward-error check does not report error 1.
+    // Factorization above still qualifies the selected backend and grounding.
+    if norm(&h.g) == 0. {
+        return Ok(sizes.iter().map(|s| DVector::zeros(*s)).collect());
+    }
     Ok(sizes
         .iter()
         .enumerate()
