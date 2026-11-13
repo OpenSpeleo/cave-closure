@@ -14,5 +14,5 @@ abi3 = ["pyo3/abi3-py311"]
 sparse-direct = ["cave_closure/sparse-direct"]
 
 [dependencies]
-cave_closure = { path = "../cave_closure" }
+cave_closure = { package = "cave-closure", path = "../cave_closure" }
 pyo3 = { version = "0.30", features = ["extension-module"] }

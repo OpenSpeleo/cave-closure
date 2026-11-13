@@ -352,8 +352,8 @@ jobs:
       - name: Test and package the Rust core
         run: |
           cargo test --locked --all-features
-          cargo package --locked -p cave_closure
-          cargo package --locked -p cave_closure --list
+          cargo package --locked -p cave-closure
+          cargo package --locked -p cave-closure --list
 
       - name: Upload crate
         uses: actions/upload-artifact@v7
@@ -423,7 +423,7 @@ jobs:
       - name: Repackage and compare before authentication
         run: |
           rustup show
-          cargo package --locked -p cave_closure
+          cargo package --locked -p cave-closure
           cmp target/package/*.crate tested-crate/*.crate
 
       - name: Authenticate to crates.io using trusted publishing
@@ -431,7 +431,7 @@ jobs:
         uses: rust-lang/crates-io-auth-action@v1
 
       - name: Publish the Rust core
-        run: cargo publish --locked --no-verify -p cave_closure
+        run: cargo publish --locked --no-verify -p cave-closure
         env:
           CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
 

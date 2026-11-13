@@ -1,4 +1,4 @@
-# cave_closure
+# cave-closure
 
 Independent Gaussian weighted least-squares adjustment of oriented survey
 multigraphs in local ENU metres. The Rust core has no consumer, geographic,

@@ -3,7 +3,7 @@ requires = ["maturin>=1.12,<2"]
 build-backend = "maturin"
 
 [project]
-name = "cave_closure"
+name = "cave-closure"
 # Maturin reads the binding crate's inherited Cargo workspace version.
 dynamic = ["version"]
 description = "Explicit covariance-weighted cave survey adjustment"
