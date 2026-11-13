@@ -1,0 +1,152 @@
+---
+name: CI
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  linter:
+    if: github.ref_type != 'tag'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code Repository
+        uses: actions/checkout@v7
+
+      - uses: j178/prek-action@v2
+        with:
+          install-only: true
+
+      - run: |
+          prek run \
+            --show-diff-on-failure \
+            --color always \
+            --all-files
+
+  test-rust:
+    if: github.ref_type != 'tag'
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install the toolchain declared by rust-toolchain.toml
+        run: |
+          rustup update
+          rustup show
+
+      - name: lint
+        run: |
+          cargo fmt --all -- --check
+          cargo clippy --locked --workspace --all-targets -- -D warnings
+          cargo clippy --locked --workspace --all-targets --all-features \
+            -- -D warnings
+
+      - name: test
+        run: |
+          cargo check --locked --workspace --all-targets --all-features
+          cargo build --locked --all-targets --all-features
+          cargo test --locked
+          cargo test --locked --all-features
+
+  test-python:
+    if: github.ref_type != 'tag'
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python: ["3.11", "3.12", "3.13", "3.14", "3.15"]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: Install the toolchain declared by rust-toolchain.toml
+        run: rustup show
+
+      - name: Install the package and test dependencies
+        run: |
+          uv sync --all-extras --frozen
+
+      - name: Run tests
+        run: |
+          uv run python --version
+          uv run pytest
+
+  test-python-freethreaded:
+    if: github.ref_type != 'tag'
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python: ["3.14t", "3.15t"]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: Install the toolchain declared by rust-toolchain.toml
+        run: rustup show
+
+      - name: Install the package and test dependencies
+        run: |
+          uv sync --all-extras --frozen
+
+      - name: Run tests
+        run: |
+          uv run python --version
+          uv run pytest
+
+  trigger-release:
+    name: Trigger release
+    needs: [linter, test-rust, test-python, test-python-freethreaded]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Fetch latest tags
+        run: git fetch --tags --force
+
+      - name: Dispatch release if commit is tagged
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG=$(git tag --points-at HEAD --list 'v*' | head -n 1)
+          if [ -z "$TAG" ]; then
+            echo "No v* tag on HEAD — skipping release"
+            exit 0
+          fi
+          echo "Found tag $TAG — dispatching release workflow"
+          gh workflow run release.yml --ref "$TAG"

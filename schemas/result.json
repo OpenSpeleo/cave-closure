@@ -1,0 +1,244 @@
+{
+  "$defs": {
+    "Axis": {
+      "enum": ["x", "y", "z"],
+      "type": "string"
+    },
+    "Coordinate": {
+      "additionalProperties": false,
+      "properties": {
+        "station": {
+          "type": "string"
+        },
+        "value": {
+          "items": {
+            "format": "double",
+            "type": "number"
+          },
+          "maxItems": 3,
+          "minItems": 3,
+          "type": "array"
+        }
+      },
+      "required": ["station", "value"],
+      "type": "object"
+    },
+    "Diagnostics": {
+      "additionalProperties": false,
+      "properties": {
+        "artificial_gauges": {
+          "items": {
+            "$ref": "#/$defs/Gauge"
+          },
+          "type": "array"
+        },
+        "backward_error": {
+          "format": "double",
+          "type": "number"
+        },
+        "calibrated_statistics_eligible": {
+          "type": "boolean"
+        },
+        "components": {
+          "format": "uint",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "cycle_rank": {
+          "format": "uint",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "hard_constraint_max_error": {
+          "format": "double",
+          "type": "number"
+        },
+        "iterations": {
+          "format": "uint",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "kernel_unknowns": {
+          "format": "uint",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "objective": {
+          "format": "double",
+          "type": "number"
+        },
+        "original_unknowns": {
+          "format": "uint",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "refinement_steps": {
+          "format": "uint",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "stochastic_redundancy": {
+          "format": "uint",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "true_residual_infinity": {
+          "format": "double",
+          "type": "number"
+        },
+        "variance_factor": {
+          "format": "double",
+          "type": ["number", "null"]
+        },
+        "warnings": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "objective",
+        "cycle_rank",
+        "stochastic_redundancy",
+        "artificial_gauges",
+        "warnings",
+        "calibrated_statistics_eligible",
+        "components",
+        "original_unknowns",
+        "kernel_unknowns",
+        "iterations",
+        "refinement_steps",
+        "true_residual_infinity",
+        "backward_error",
+        "hard_constraint_max_error"
+      ],
+      "type": "object"
+    },
+    "Frame": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/FrameKind"
+        },
+        "length_unit": {
+          "$ref": "#/$defs/LengthUnit"
+        },
+        "provenance": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": ["kind", "length_unit"],
+      "type": "object"
+    },
+    "FrameKind": {
+      "enum": ["local_enu"],
+      "type": "string"
+    },
+    "Gauge": {
+      "additionalProperties": false,
+      "properties": {
+        "axis": {
+          "$ref": "#/$defs/Axis"
+        },
+        "station": {
+          "type": "string"
+        },
+        "value": {
+          "format": "double",
+          "type": "number"
+        }
+      },
+      "required": ["station", "axis", "value"],
+      "type": "object"
+    },
+    "LengthUnit": {
+      "enum": ["m"],
+      "type": "string"
+    },
+    "ObservationResult": {
+      "additionalProperties": false,
+      "properties": {
+        "correction": {
+          "items": {
+            "format": "double",
+            "type": "number"
+          },
+          "maxItems": 3,
+          "minItems": 3,
+          "type": "array"
+        },
+        "id": {
+          "type": "string"
+        },
+        "residual": {
+          "items": {
+            "format": "double",
+            "type": "number"
+          },
+          "maxItems": 3,
+          "minItems": 3,
+          "type": "array"
+        }
+      },
+      "required": ["id", "correction", "residual"],
+      "type": "object"
+    },
+    "Termination": {
+      "enum": [
+        "converged",
+        "iteration_limit",
+        "stagnation",
+        "cancelled",
+        "numerical_breakdown",
+        "resource_limit"
+      ],
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "coordinates": {
+      "items": {
+        "$ref": "#/$defs/Coordinate"
+      },
+      "type": "array"
+    },
+    "diagnostics": {
+      "$ref": "#/$defs/Diagnostics"
+    },
+    "frame": {
+      "$ref": "#/$defs/Frame"
+    },
+    "observations": {
+      "items": {
+        "$ref": "#/$defs/ObservationResult"
+      },
+      "type": "array"
+    },
+    "schema_version": {
+      "format": "uint32",
+      "maximum": 1,
+      "minimum": 1,
+      "type": "integer"
+    },
+    "status": {
+      "$ref": "#/$defs/Termination"
+    }
+  },
+  "required": [
+    "schema_version",
+    "status",
+    "coordinates",
+    "observations",
+    "diagnostics",
+    "frame"
+  ],
+  "title": "SolveReport",
+  "type": "object"
+}

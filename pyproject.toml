@@ -1,0 +1,50 @@
+[build-system]
+requires = ["maturin>=1.12,<2"]
+build-backend = "maturin"
+
+[project]
+name = "cave_closure"
+dynamic = ["version"]
+description = "Explicit covariance-weighted cave survey adjustment"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "AGPL-3.0-or-later"
+
+[dependency-groups]
+dev = ["pytest>=9", "maturin>=1.12,<2", "numpy>=2", "scipy>=1.17", "jsonschema>=4", "ruff>=0.17,<1"]
+
+[tool.uv]
+cache-keys = [
+    { file = "pyproject.toml" },
+    { file = "Cargo.toml" },
+    { file = "Cargo.lock" },
+    { file = "rust-toolchain.toml" },
+    { file = "crates/**/Cargo.toml" },
+    { file = "crates/**/*.rs" },
+    { file = "python/**/*.py" },
+    { file = "python/**/*.pyi" },
+    { file = "python/**/py.typed" },
+]
+
+[tool.maturin]
+editable-profile = "dev"
+manifest-path = "crates/cave_closure_py/Cargo.toml"
+python-source = "python"
+module-name = "cave_closure._native"
+include = [
+    { path = "rust-toolchain.toml", format = "sdist" },
+    { path = "tests/fixtures/*.json", format = "sdist" },
+    { path = "tests/*.py", format = "sdist" },
+    { path = "schemas/*.json", format = "sdist" },
+    { path = "docs/*.md", format = "sdist" },
+    { path = "LICENSE", format = "sdist" },
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I"]

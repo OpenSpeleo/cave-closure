@@ -1,0 +1,426 @@
+{
+  "$defs": {
+    "Algorithm": {
+      "additionalProperties": false,
+      "properties": {
+        "backend": {
+          "$ref": "#/$defs/LinearBackend"
+        },
+        "objective": {
+          "$ref": "#/$defs/Objective"
+        }
+      },
+      "required": ["objective", "backend"],
+      "type": "object"
+    },
+    "Axis": {
+      "enum": ["x", "y", "z"],
+      "type": "string"
+    },
+    "Control": {
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "axes": {
+              "items": {
+                "$ref": "#/$defs/Axis"
+              },
+              "type": "array"
+            },
+            "id": {
+              "type": "string"
+            },
+            "kind": {
+              "const": "hard",
+              "type": "string"
+            },
+            "station": {
+              "type": "string"
+            },
+            "value": {
+              "items": {
+                "format": "double",
+                "type": "number"
+              },
+              "type": "array"
+            }
+          },
+          "required": ["kind", "id", "station", "axes", "value"],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "axes": {
+              "items": {
+                "$ref": "#/$defs/Axis"
+              },
+              "type": "array"
+            },
+            "covariance": {
+              "items": {
+                "items": {
+                  "format": "double",
+                  "type": "number"
+                },
+                "type": "array"
+              },
+              "type": "array"
+            },
+            "id": {
+              "type": "string"
+            },
+            "kind": {
+              "const": "soft",
+              "type": "string"
+            },
+            "station": {
+              "type": "string"
+            },
+            "value": {
+              "items": {
+                "format": "double",
+                "type": "number"
+              },
+              "type": "array"
+            }
+          },
+          "required": ["kind", "id", "station", "axes", "value", "covariance"],
+          "type": "object"
+        }
+      ]
+    },
+    "Frame": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/FrameKind"
+        },
+        "length_unit": {
+          "$ref": "#/$defs/LengthUnit"
+        },
+        "provenance": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": ["kind", "length_unit"],
+      "type": "object"
+    },
+    "FrameKind": {
+      "enum": ["local_enu"],
+      "type": "string"
+    },
+    "LengthUnit": {
+      "enum": ["m"],
+      "type": "string"
+    },
+    "LinearBackend": {
+      "enum": ["reduced_pcg"],
+      "type": "string"
+    },
+    "Mode": {
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "spatial",
+              "type": "string"
+            }
+          },
+          "required": ["kind"],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "horizontal",
+              "type": "string"
+            },
+            "preserved_z": {
+              "additionalProperties": {
+                "format": "double",
+                "type": "number"
+              },
+              "type": "object"
+            }
+          },
+          "required": ["kind", "preserved_z"],
+          "type": "object"
+        }
+      ]
+    },
+    "Objective": {
+      "enum": ["gaussian"],
+      "type": "string"
+    },
+    "Observation": {
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "from": {
+              "type": "string"
+            },
+            "id": {
+              "type": "string"
+            },
+            "kind": {
+              "const": "displacement",
+              "type": "string"
+            },
+            "reading_ids": {
+              "default": [],
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "to": {
+              "type": "string"
+            },
+            "uncertainty": {
+              "$ref": "#/$defs/Uncertainty"
+            },
+            "value": {
+              "items": {
+                "format": "double",
+                "type": "number"
+              },
+              "maxItems": 3,
+              "minItems": 3,
+              "type": "array"
+            }
+          },
+          "required": ["kind", "id", "from", "to", "value", "uncertainty"],
+          "type": "object"
+        }
+      ]
+    },
+    "Relationship": {
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "from": {
+              "type": "string"
+            },
+            "id": {
+              "type": "string"
+            },
+            "kind": {
+              "const": "equivalent",
+              "type": "string"
+            },
+            "to": {
+              "type": "string"
+            }
+          },
+          "required": ["kind", "id", "from", "to"],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "from": {
+              "type": "string"
+            },
+            "id": {
+              "type": "string"
+            },
+            "kind": {
+              "const": "hard_offset",
+              "type": "string"
+            },
+            "to": {
+              "type": "string"
+            },
+            "value": {
+              "items": {
+                "format": "double",
+                "type": "number"
+              },
+              "maxItems": 3,
+              "minItems": 3,
+              "type": "array"
+            }
+          },
+          "required": ["kind", "id", "from", "to", "value"],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "from": {
+              "type": "string"
+            },
+            "id": {
+              "type": "string"
+            },
+            "kind": {
+              "const": "recorded",
+              "type": "string"
+            },
+            "source": {
+              "type": "string"
+            },
+            "to": {
+              "type": "string"
+            }
+          },
+          "required": ["kind", "id", "from", "to", "source"],
+          "type": "object"
+        }
+      ]
+    },
+    "Station": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": ["id"],
+      "type": "object"
+    },
+    "Uncertainty": {
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "isotropic",
+              "type": "string"
+            },
+            "sigma_m": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": ["kind", "sigma_m"],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "covariance",
+              "type": "string"
+            },
+            "matrix": {
+              "items": {
+                "items": {
+                  "format": "double",
+                  "type": "number"
+                },
+                "maxItems": 3,
+                "minItems": 3,
+                "type": "array"
+              },
+              "maxItems": 3,
+              "minItems": 3,
+              "type": "array"
+            }
+          },
+          "required": ["kind", "matrix"],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "length_proportional",
+              "type": "string"
+            },
+            "length_m": {
+              "format": "double",
+              "type": "number"
+            },
+            "variance_per_m": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": ["kind", "length_m", "variance_per_m"],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "relative",
+              "type": "string"
+            },
+            "weight": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          "required": ["kind", "weight"],
+          "type": "object"
+        }
+      ]
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "algorithm": {
+      "$ref": "#/$defs/Algorithm"
+    },
+    "controls": {
+      "items": {
+        "$ref": "#/$defs/Control"
+      },
+      "type": "array"
+    },
+    "frame": {
+      "$ref": "#/$defs/Frame"
+    },
+    "mode": {
+      "$ref": "#/$defs/Mode"
+    },
+    "observations": {
+      "items": {
+        "$ref": "#/$defs/Observation"
+      },
+      "type": "array"
+    },
+    "relationships": {
+      "items": {
+        "$ref": "#/$defs/Relationship"
+      },
+      "type": "array"
+    },
+    "schema_version": {
+      "format": "uint32",
+      "maximum": 1,
+      "minimum": 1,
+      "type": "integer"
+    },
+    "stations": {
+      "items": {
+        "$ref": "#/$defs/Station"
+      },
+      "type": "array"
+    }
+  },
+  "required": [
+    "schema_version",
+    "frame",
+    "mode",
+    "stations",
+    "observations",
+    "controls",
+    "relationships",
+    "algorithm"
+  ],
+  "title": "NormalizedProblem",
+  "type": "object"
+}
