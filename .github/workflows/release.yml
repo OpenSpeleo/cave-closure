@@ -307,7 +307,7 @@ jobs:
   # ======================================== #
   publish-crate:
     needs: verify-artifacts
-    name: Release Crates.IO
+    name: Release Crates.io
     runs-on: ubuntu-latest
     environment: crates-io
     permissions:
@@ -321,13 +321,13 @@ jobs:
       - uses: actions/download-artifact@v8
         with:
           name: crate
-          path: tested-crate
+          path: ${{ runner.temp }}/tested-crate
 
       - name: Repackage and compare before authentication
         run: |
           rustup show
           cargo package --locked -p cave-closure
-          cmp target/package/*.crate tested-crate/*.crate
+          cmp target/package/*.crate "$RUNNER_TEMP/tested-crate/"*.crate
 
       - name: Authenticate to crates.io using trusted publishing
         id: auth

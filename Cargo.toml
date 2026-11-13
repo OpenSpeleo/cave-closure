@@ -5,6 +5,25 @@ edition = "2024"
 license = "AGPL-3.0-or-later"
 description = "Explicit covariance-weighted cave survey loop closure in local ENU metres"
 readme = "README.md"
+# Keep reference papers and the generated fixture corpus out of crates.io uploads.
+# Maturin includes the complete Python test corpus separately in its sdist.
+include = [
+    "/src_rust/**",
+    "/src_python/**/*.py",
+    "/src_python/**/*.pyi",
+    "/src_python/**/py.typed",
+    "/benches/**",
+    "/examples/**",
+    "/tests/core.rs",
+    "/tests/fixtures/controlled_tree.json",
+    "/schemas/**",
+    "/docs/*.md",
+    "/scripts/generate_stubs.py",
+    "/pyproject.toml",
+    "/rust-toolchain.toml",
+    "/README.md",
+    "/LICENSE",
+]
 
 [lib]
 name = "cave_closure"
