@@ -11,7 +11,12 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import pytest
-from cave_closure import CancellationToken, IncompleteResultError, prepare_json
+from cave_closure import (
+    CancellationToken,
+    IncompleteResultError,
+    LoopClosureAlgorithm,
+    prepare_json,
+)
 from generate_graphs import generate_graph
 
 
@@ -28,12 +33,11 @@ def test_worker_cancellation_during_owned_computation():
         topology="chain",
         controls_per_component=2,
     )
+    problem["algorithm"] = LoopClosureAlgorithm.LSE_UNREDUCED_PCG.name
     prepared = prepare_json(json.dumps(problem))
     token = CancellationToken()
     with ThreadPoolExecutor(max_workers=1) as pool:
-        future = pool.submit(
-            prepared.solve, reduce=False, cancellation=token, max_iterations=100000
-        )
+        future = pool.submit(prepared.solve, cancellation=token, max_iterations=100000)
         time.sleep(0.03)
         token.cancel()
         try:
@@ -51,11 +55,11 @@ def test_main_thread_keyboard_interrupt_is_preserved():
 import json, sys
 sys.path.insert(0, sys.argv[1])
 from generate_graphs import generate_graph
-from cave_closure import prepare_json
-prepared = prepare_json(json.dumps(generate_graph(seed=713, stations=3000, extra_edges=0, topology="chain")))
+from cave_closure import LoopClosureAlgorithm, prepare_json
+prepared = prepare_json(json.dumps(dict(generate_graph(seed=713, stations=3000, extra_edges=0, topology="chain"), algorithm=LoopClosureAlgorithm.LSE_UNREDUCED_PCG.name)))
 print("ready", flush=True)
 try:
-    prepared.solve(reduce=False, max_iterations=100000)
+    prepared.solve(max_iterations=100000)
 except KeyboardInterrupt:
     print("interrupted", flush=True)
     raise SystemExit(0)

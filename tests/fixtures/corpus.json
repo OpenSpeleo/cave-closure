@@ -6,10 +6,10 @@
       "input": "controlled_tree.json",
       "reference": "controlled_tree.reference.json",
       "results": {
-        "reduced_pcg": "controlled_tree.reduced_pcg.result.json",
-        "unreduced_pcg": "controlled_tree.unreduced_pcg.result.json",
-        "sparse_qr": "controlled_tree.sparse_qr.result.json",
-        "sparse_cholesky": "controlled_tree.sparse_cholesky.result.json"
+        "LSE_REDUCED_PCG": "controlled_tree.LSE_REDUCED_PCG.result.json",
+        "LSE_UNREDUCED_PCG": "controlled_tree.LSE_UNREDUCED_PCG.result.json",
+        "LSE_SPARSE_QR": "controlled_tree.LSE_SPARSE_QR.result.json",
+        "LSE_SPARSE_CHOLESKY": "controlled_tree.LSE_SPARSE_CHOLESKY.result.json"
       }
     },
     {
@@ -17,10 +17,10 @@
       "input": "random-2500-101.json",
       "reference": "random-2500-101.reference.json",
       "results": {
-        "reduced_pcg": "random-2500-101.reduced_pcg.result.json",
-        "unreduced_pcg": "random-2500-101.unreduced_pcg.result.json",
-        "sparse_qr": "random-2500-101.sparse_qr.result.json",
-        "sparse_cholesky": "random-2500-101.sparse_cholesky.result.json"
+        "LSE_REDUCED_PCG": "random-2500-101.LSE_REDUCED_PCG.result.json",
+        "LSE_UNREDUCED_PCG": "random-2500-101.LSE_UNREDUCED_PCG.result.json",
+        "LSE_SPARSE_QR": "random-2500-101.LSE_SPARSE_QR.result.json",
+        "LSE_SPARSE_CHOLESKY": "random-2500-101.LSE_SPARSE_CHOLESKY.result.json"
       }
     },
     {
@@ -28,10 +28,10 @@
       "input": "random-2500-17.json",
       "reference": "random-2500-17.reference.json",
       "results": {
-        "reduced_pcg": "random-2500-17.reduced_pcg.result.json",
-        "unreduced_pcg": "random-2500-17.unreduced_pcg.result.json",
-        "sparse_qr": "random-2500-17.sparse_qr.result.json",
-        "sparse_cholesky": "random-2500-17.sparse_cholesky.result.json"
+        "LSE_REDUCED_PCG": "random-2500-17.LSE_REDUCED_PCG.result.json",
+        "LSE_UNREDUCED_PCG": "random-2500-17.LSE_UNREDUCED_PCG.result.json",
+        "LSE_SPARSE_QR": "random-2500-17.LSE_SPARSE_QR.result.json",
+        "LSE_SPARSE_CHOLESKY": "random-2500-17.LSE_SPARSE_CHOLESKY.result.json"
       }
     },
     {
@@ -39,10 +39,10 @@
       "input": "random-2500-3.json",
       "reference": "random-2500-3.reference.json",
       "results": {
-        "reduced_pcg": "random-2500-3.reduced_pcg.result.json",
-        "unreduced_pcg": "random-2500-3.unreduced_pcg.result.json",
-        "sparse_qr": "random-2500-3.sparse_qr.result.json",
-        "sparse_cholesky": "random-2500-3.sparse_cholesky.result.json"
+        "LSE_REDUCED_PCG": "random-2500-3.LSE_REDUCED_PCG.result.json",
+        "LSE_UNREDUCED_PCG": "random-2500-3.LSE_UNREDUCED_PCG.result.json",
+        "LSE_SPARSE_QR": "random-2500-3.LSE_SPARSE_QR.result.json",
+        "LSE_SPARSE_CHOLESKY": "random-2500-3.LSE_SPARSE_CHOLESKY.result.json"
       }
     },
     {
@@ -50,10 +50,10 @@
       "input": "random-48-101.json",
       "reference": "random-48-101.reference.json",
       "results": {
-        "reduced_pcg": "random-48-101.reduced_pcg.result.json",
-        "unreduced_pcg": "random-48-101.unreduced_pcg.result.json",
-        "sparse_qr": "random-48-101.sparse_qr.result.json",
-        "sparse_cholesky": "random-48-101.sparse_cholesky.result.json"
+        "LSE_REDUCED_PCG": "random-48-101.LSE_REDUCED_PCG.result.json",
+        "LSE_UNREDUCED_PCG": "random-48-101.LSE_UNREDUCED_PCG.result.json",
+        "LSE_SPARSE_QR": "random-48-101.LSE_SPARSE_QR.result.json",
+        "LSE_SPARSE_CHOLESKY": "random-48-101.LSE_SPARSE_CHOLESKY.result.json"
       }
     },
     {
@@ -61,10 +61,10 @@
       "input": "random-48-17.json",
       "reference": "random-48-17.reference.json",
       "results": {
-        "reduced_pcg": "random-48-17.reduced_pcg.result.json",
-        "unreduced_pcg": "random-48-17.unreduced_pcg.result.json",
-        "sparse_qr": "random-48-17.sparse_qr.result.json",
-        "sparse_cholesky": "random-48-17.sparse_cholesky.result.json"
+        "LSE_REDUCED_PCG": "random-48-17.LSE_REDUCED_PCG.result.json",
+        "LSE_UNREDUCED_PCG": "random-48-17.LSE_UNREDUCED_PCG.result.json",
+        "LSE_SPARSE_QR": "random-48-17.LSE_SPARSE_QR.result.json",
+        "LSE_SPARSE_CHOLESKY": "random-48-17.LSE_SPARSE_CHOLESKY.result.json"
       }
     },
     {
@@ -72,10 +72,10 @@
       "input": "random-48-3.json",
       "reference": "random-48-3.reference.json",
       "results": {
-        "reduced_pcg": "random-48-3.reduced_pcg.result.json",
-        "unreduced_pcg": "random-48-3.unreduced_pcg.result.json",
-        "sparse_qr": "random-48-3.sparse_qr.result.json",
-        "sparse_cholesky": "random-48-3.sparse_cholesky.result.json"
+        "LSE_REDUCED_PCG": "random-48-3.LSE_REDUCED_PCG.result.json",
+        "LSE_UNREDUCED_PCG": "random-48-3.LSE_UNREDUCED_PCG.result.json",
+        "LSE_SPARSE_QR": "random-48-3.LSE_SPARSE_QR.result.json",
+        "LSE_SPARSE_CHOLESKY": "random-48-3.LSE_SPARSE_CHOLESKY.result.json"
       }
     },
     {
@@ -83,10 +83,10 @@
       "input": "ring-2500-101.json",
       "reference": "ring-2500-101.reference.json",
       "results": {
-        "reduced_pcg": "ring-2500-101.reduced_pcg.result.json",
-        "unreduced_pcg": "ring-2500-101.unreduced_pcg.result.json",
-        "sparse_qr": "ring-2500-101.sparse_qr.result.json",
-        "sparse_cholesky": "ring-2500-101.sparse_cholesky.result.json"
+        "LSE_REDUCED_PCG": "ring-2500-101.LSE_REDUCED_PCG.result.json",
+        "LSE_UNREDUCED_PCG": "ring-2500-101.LSE_UNREDUCED_PCG.result.json",
+        "LSE_SPARSE_QR": "ring-2500-101.LSE_SPARSE_QR.result.json",
+        "LSE_SPARSE_CHOLESKY": "ring-2500-101.LSE_SPARSE_CHOLESKY.result.json"
       }
     },
     {
@@ -94,10 +94,10 @@
       "input": "ring-2500-17.json",
       "reference": "ring-2500-17.reference.json",
       "results": {
-        "reduced_pcg": "ring-2500-17.reduced_pcg.result.json",
-        "unreduced_pcg": "ring-2500-17.unreduced_pcg.result.json",
-        "sparse_qr": "ring-2500-17.sparse_qr.result.json",
-        "sparse_cholesky": "ring-2500-17.sparse_cholesky.result.json"
+        "LSE_REDUCED_PCG": "ring-2500-17.LSE_REDUCED_PCG.result.json",
+        "LSE_UNREDUCED_PCG": "ring-2500-17.LSE_UNREDUCED_PCG.result.json",
+        "LSE_SPARSE_QR": "ring-2500-17.LSE_SPARSE_QR.result.json",
+        "LSE_SPARSE_CHOLESKY": "ring-2500-17.LSE_SPARSE_CHOLESKY.result.json"
       }
     },
     {
@@ -105,10 +105,10 @@
       "input": "ring-2500-3.json",
       "reference": "ring-2500-3.reference.json",
       "results": {
-        "reduced_pcg": "ring-2500-3.reduced_pcg.result.json",
-        "unreduced_pcg": "ring-2500-3.unreduced_pcg.result.json",
-        "sparse_qr": "ring-2500-3.sparse_qr.result.json",
-        "sparse_cholesky": "ring-2500-3.sparse_cholesky.result.json"
+        "LSE_REDUCED_PCG": "ring-2500-3.LSE_REDUCED_PCG.result.json",
+        "LSE_UNREDUCED_PCG": "ring-2500-3.LSE_UNREDUCED_PCG.result.json",
+        "LSE_SPARSE_QR": "ring-2500-3.LSE_SPARSE_QR.result.json",
+        "LSE_SPARSE_CHOLESKY": "ring-2500-3.LSE_SPARSE_CHOLESKY.result.json"
       }
     },
     {
@@ -116,10 +116,10 @@
       "input": "ring-48-101.json",
       "reference": "ring-48-101.reference.json",
       "results": {
-        "reduced_pcg": "ring-48-101.reduced_pcg.result.json",
-        "unreduced_pcg": "ring-48-101.unreduced_pcg.result.json",
-        "sparse_qr": "ring-48-101.sparse_qr.result.json",
-        "sparse_cholesky": "ring-48-101.sparse_cholesky.result.json"
+        "LSE_REDUCED_PCG": "ring-48-101.LSE_REDUCED_PCG.result.json",
+        "LSE_UNREDUCED_PCG": "ring-48-101.LSE_UNREDUCED_PCG.result.json",
+        "LSE_SPARSE_QR": "ring-48-101.LSE_SPARSE_QR.result.json",
+        "LSE_SPARSE_CHOLESKY": "ring-48-101.LSE_SPARSE_CHOLESKY.result.json"
       }
     },
     {
@@ -127,10 +127,10 @@
       "input": "ring-48-17.json",
       "reference": "ring-48-17.reference.json",
       "results": {
-        "reduced_pcg": "ring-48-17.reduced_pcg.result.json",
-        "unreduced_pcg": "ring-48-17.unreduced_pcg.result.json",
-        "sparse_qr": "ring-48-17.sparse_qr.result.json",
-        "sparse_cholesky": "ring-48-17.sparse_cholesky.result.json"
+        "LSE_REDUCED_PCG": "ring-48-17.LSE_REDUCED_PCG.result.json",
+        "LSE_UNREDUCED_PCG": "ring-48-17.LSE_UNREDUCED_PCG.result.json",
+        "LSE_SPARSE_QR": "ring-48-17.LSE_SPARSE_QR.result.json",
+        "LSE_SPARSE_CHOLESKY": "ring-48-17.LSE_SPARSE_CHOLESKY.result.json"
       }
     },
     {
@@ -138,10 +138,10 @@
       "input": "ring-48-3.json",
       "reference": "ring-48-3.reference.json",
       "results": {
-        "reduced_pcg": "ring-48-3.reduced_pcg.result.json",
-        "unreduced_pcg": "ring-48-3.unreduced_pcg.result.json",
-        "sparse_qr": "ring-48-3.sparse_qr.result.json",
-        "sparse_cholesky": "ring-48-3.sparse_cholesky.result.json"
+        "LSE_REDUCED_PCG": "ring-48-3.LSE_REDUCED_PCG.result.json",
+        "LSE_UNREDUCED_PCG": "ring-48-3.LSE_UNREDUCED_PCG.result.json",
+        "LSE_SPARSE_QR": "ring-48-3.LSE_SPARSE_QR.result.json",
+        "LSE_SPARSE_CHOLESKY": "ring-48-3.LSE_SPARSE_CHOLESKY.result.json"
       }
     }
   ]

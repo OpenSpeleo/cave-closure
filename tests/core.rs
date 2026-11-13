@@ -3,13 +3,21 @@ fn tree() -> NormalizedProblem {
     json::from_json(include_str!("fixtures/controlled_tree.json")).unwrap()
 }
 fn solve(p: &NormalizedProblem, reduce: bool) -> SolveReport {
-    prepare(p, &PrepareOptions::default())
+    let mut problem = p.clone();
+    if matches!(
+        problem.algorithm,
+        LoopClosureAlgorithm::LseReducedPcg | LoopClosureAlgorithm::LseUnreducedPcg
+    ) {
+        problem.algorithm = if reduce {
+            LoopClosureAlgorithm::LseReducedPcg
+        } else {
+            LoopClosureAlgorithm::LseUnreducedPcg
+        };
+    }
+    prepare(&problem, &PrepareOptions::default())
         .unwrap()
         .solve(
-            &SolveConfig {
-                reduce,
-                ..Default::default()
-            },
+            &SolveConfig::default(),
             &mut Workspace::default(),
             &SolveControl::default(),
         )
@@ -51,8 +59,11 @@ fn direct_solvers_preserve_exact_zero_stationarity() {
             reading_ids: vec![],
         })
         .collect();
-    for backend in [LinearBackend::SparseQr, LinearBackend::SparseCholesky] {
-        problem.algorithm.backend = backend;
+    for backend in [
+        LoopClosureAlgorithm::LseSparseQr,
+        LoopClosureAlgorithm::LseSparseCholesky,
+    ] {
+        problem.algorithm = backend;
         let result = solve(&problem, false);
         result.require_converged().unwrap();
         assert_eq!(result.coordinates[1].value, [0.; 3]);
@@ -187,7 +198,7 @@ fn shared_readings_rejected_or_reported() {
 #[test]
 fn horizontal_uses_marginal_covariance() {
     let mut p = tree();
-    p.mode = Mode::Horizontal {
+    p.mode = LoopClosureMode::Horizontal {
         preserved_z: p.stations.iter().map(|s| (s.id.clone(), 42.)).collect(),
     };
     for c in &mut p.controls {
@@ -220,12 +231,13 @@ fn rejects_invalid_covariances_and_ids() {
 }
 #[test]
 fn iteration_limit_is_not_success() {
-    let r = prepare(&tree(), &Default::default())
+    let mut problem = tree();
+    problem.algorithm = LoopClosureAlgorithm::LseUnreducedPcg;
+    let r = prepare(&problem, &Default::default())
         .unwrap()
         .solve(
             &SolveConfig {
                 max_iterations: 0,
-                reduce: false,
                 ..Default::default()
             },
             &mut Workspace::default(),
@@ -248,15 +260,16 @@ fn cancellation() {
 }
 #[test]
 fn strict_json() {
-    let input = include_str!("fixtures/controlled_tree.json");
-    assert!(
-        json::from_json(&input.replace("\"sigma_m\":1", "\"sigma_m\":1,\"sigma_m\":2")).is_err()
-    );
+    let input = serde_json::to_string(&tree()).unwrap();
+    let duplicate = input.replace("\"sigma_m\":1.0", "\"sigma_m\":1.0,\"sigma_m\":2.0");
+    assert_ne!(duplicate, input);
+    assert!(json::from_json(&duplicate).is_err());
     assert!(
         json::from_json(&input.replace("\"local_enu\"", "\"local_enu\",\"unknown\":true")).is_err()
     );
-    assert!(json::from_json(&input.replace("{\"id\": \"A\"}", "[\"A\"]")).is_err());
+    assert!(json::from_json(&input.replace("{\"id\":\"A\"}", "[\"A\"]")).is_err());
 }
+
 #[test]
 fn nonfinite_output_is_rejected() {
     let mut r = solve(&tree(), true);
@@ -322,9 +335,12 @@ fn large_translation_keeps_local_accuracy() {
 #[cfg(feature = "sparse-direct")]
 #[test]
 fn direct_backends_match_analytic_tree() {
-    for backend in [LinearBackend::SparseQr, LinearBackend::SparseCholesky] {
+    for backend in [
+        LoopClosureAlgorithm::LseSparseQr,
+        LoopClosureAlgorithm::LseSparseCholesky,
+    ] {
         let mut p = tree();
-        p.algorithm.backend = backend;
+        p.algorithm = backend;
         let r = solve(&p, true);
         r.require_converged().unwrap();
         assert!((r.coordinates[1].value[0] - 10.2).abs() < 1e-12);
@@ -398,11 +414,14 @@ fn generated_noncommuting_blocks_with_partial_controls() {
                 reading_ids: vec![],
             });
         }
-        p.algorithm.backend = LinearBackend::SparseQr;
+        p.algorithm = LoopClosureAlgorithm::LseSparseQr;
         let oracle = solve(&p, false);
         oracle.require_converged().unwrap();
-        for backend in [LinearBackend::ReducedPcg, LinearBackend::SparseCholesky] {
-            p.algorithm.backend = backend;
+        for backend in [
+            LoopClosureAlgorithm::LseReducedPcg,
+            LoopClosureAlgorithm::LseSparseCholesky,
+        ] {
+            p.algorithm = backend;
             for reduce in [false, true] {
                 let actual = solve(&p, reduce);
                 actual.require_converged().unwrap();

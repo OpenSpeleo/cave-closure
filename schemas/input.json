@@ -1,18 +1,5 @@
 {
   "$defs": {
-    "Algorithm": {
-      "additionalProperties": false,
-      "properties": {
-        "backend": {
-          "$ref": "#/$defs/LinearBackend"
-        },
-        "objective": {
-          "$ref": "#/$defs/Objective"
-        }
-      },
-      "required": ["objective", "backend"],
-      "type": "object"
-    },
     "Axis": {
       "enum": ["x", "y", "z"],
       "type": "string"
@@ -119,11 +106,17 @@
       "enum": ["m"],
       "type": "string"
     },
-    "LinearBackend": {
-      "enum": ["reduced_pcg"],
+    "LoopClosureAlgorithm": {
+      "description": "Numerical algorithm used for covariance-weighted loop closure.",
+      "enum": [
+        "LSE_REDUCED_PCG",
+        "LSE_UNREDUCED_PCG",
+        "LSE_SPARSE_QR",
+        "LSE_SPARSE_CHOLESKY"
+      ],
       "type": "string"
     },
-    "Mode": {
+    "LoopClosureMode": {
       "oneOf": [
         {
           "additionalProperties": false,
@@ -155,10 +148,6 @@
           "type": "object"
         }
       ]
-    },
-    "Objective": {
-      "enum": ["gaussian"],
-      "type": "string"
     },
     "Observation": {
       "oneOf": [
@@ -372,7 +361,7 @@
   "additionalProperties": false,
   "properties": {
     "algorithm": {
-      "$ref": "#/$defs/Algorithm"
+      "$ref": "#/$defs/LoopClosureAlgorithm"
     },
     "controls": {
       "items": {
@@ -384,7 +373,7 @@
       "$ref": "#/$defs/Frame"
     },
     "mode": {
-      "$ref": "#/$defs/Mode"
+      "$ref": "#/$defs/LoopClosureMode"
     },
     "observations": {
       "items": {

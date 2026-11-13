@@ -11,7 +11,7 @@ import json
 from pathlib import Path
 
 import numpy as np
-from fixture_corpus import SOLVERS, generate_solver_results, verify_result
+from fixture_corpus import ALGORITHMS, generate_solver_results, verify_result
 from scipy import linalg, sparse
 from scipy.sparse.linalg import lsmr
 
@@ -100,7 +100,7 @@ def generate_graph(
             for i in sorted(controls)
         ],
         "relationships": [],
-        "algorithm": {"objective": "gaussian", "backend": "reduced_pcg"},
+        "algorithm": "LSE_REDUCED_PCG",
     }
 
 
@@ -267,7 +267,7 @@ def main():
                     "reference": reference_name,
                     "results": {
                         solver: f"{path.stem}.{solver}.result.json"
-                        for solver in SOLVERS
+                        for solver in ALGORITHMS
                     },
                 }
             )
@@ -287,7 +287,7 @@ def main():
                         solver,
                     )
             print(
-                f"Verified {len(cases)} fixtures against independent references with all {len(SOLVERS)} solvers"
+                f"Verified {len(cases)} fixtures against independent references with all {len(ALGORITHMS)} solvers"
             )
 
 

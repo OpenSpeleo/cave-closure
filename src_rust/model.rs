@@ -45,13 +45,13 @@ pub enum LengthUnit {
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
-pub enum Mode {
+pub enum LoopClosureMode {
     Spatial,
     Horizontal {
         preserved_z: BTreeMap<StationId, f64>,
     },
 }
-impl Mode {
+impl LoopClosureMode {
     pub fn dimension(&self) -> usize {
         if matches!(self, Self::Spatial) { 3 } else { 2 }
     }
@@ -204,25 +204,75 @@ impl Relationship {
     }
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, JsonSchema)]
-#[serde(rename_all = "snake_case")]
-pub enum Objective {
-    Gaussian,
+/// Numerical algorithm used for covariance-weighted loop closure.
+#[cfg_attr(feature = "python", pyo3_stub_gen::derive::gen_stub_pyclass_enum)]
+#[cfg_attr(
+    feature = "python",
+    pyo3::pyclass(
+        eq,
+        hash,
+        frozen,
+        from_py_object,
+        module = "cave_closure._native",
+        rename_all = "SCREAMING_SNAKE_CASE"
+    )
+)]
+#[derive(
+    ts_rs::TS, Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, JsonSchema,
+)]
+#[allow(clippy::enum_variant_names)]
+#[derive(Hash)]
+pub enum LoopClosureAlgorithm {
+    #[default]
+    #[serde(rename = "LSE_REDUCED_PCG")]
+    LseReducedPcg,
+    #[serde(rename = "LSE_UNREDUCED_PCG")]
+    LseUnreducedPcg,
+    #[serde(rename = "LSE_SPARSE_QR")]
+    LseSparseQr,
+    #[serde(rename = "LSE_SPARSE_CHOLESKY")]
+    LseSparseCholesky,
 }
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, JsonSchema)]
-#[serde(rename_all = "snake_case")]
-pub enum LinearBackend {
-    ReducedPcg,
+
+impl LoopClosureAlgorithm {
+    pub const ALL: [Self; 4] = [
+        Self::LseReducedPcg,
+        Self::LseUnreducedPcg,
+        Self::LseSparseQr,
+        Self::LseSparseCholesky,
+    ];
+
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::LseReducedPcg => "LSE_REDUCED_PCG",
+            Self::LseUnreducedPcg => "LSE_UNREDUCED_PCG",
+            Self::LseSparseQr => "LSE_SPARSE_QR",
+            Self::LseSparseCholesky => "LSE_SPARSE_CHOLESKY",
+        }
+    }
+
+    pub(crate) fn backend(self) -> Result<LinearBackend, crate::Error> {
+        match self {
+            Self::LseReducedPcg | Self::LseUnreducedPcg => Ok(LinearBackend::Pcg),
+            #[cfg(feature = "sparse-direct")]
+            Self::LseSparseQr => Ok(LinearBackend::SparseQr),
+            #[cfg(feature = "sparse-direct")]
+            Self::LseSparseCholesky => Ok(LinearBackend::SparseCholesky),
+            #[cfg(not(feature = "sparse-direct"))]
+            Self::LseSparseQr | Self::LseSparseCholesky => Err(crate::invalid(
+                "algorithm requires the sparse-direct feature",
+            )),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub(crate) enum LinearBackend {
+    Pcg,
     #[cfg(feature = "sparse-direct")]
     SparseQr,
     #[cfg(feature = "sparse-direct")]
     SparseCholesky,
-}
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
-#[serde(deny_unknown_fields)]
-pub struct Algorithm {
-    pub objective: Objective,
-    pub backend: LinearBackend,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
@@ -231,12 +281,12 @@ pub struct NormalizedProblem {
     #[schemars(range(min = 1, max = 1))]
     pub schema_version: u32,
     pub frame: Frame,
-    pub mode: Mode,
+    pub mode: LoopClosureMode,
     pub stations: Vec<Station>,
     pub observations: Vec<Observation>,
     pub controls: Vec<Control>,
     pub relationships: Vec<Relationship>,
-    pub algorithm: Algorithm,
+    pub algorithm: LoopClosureAlgorithm,
 }
 
 #[derive(Debug, Clone)]
@@ -264,7 +314,6 @@ pub struct SolveConfig {
     pub relative_tolerance: f64,
     pub absolute_tolerance: f64,
     pub backward_error_target: f64,
-    pub reduce: bool,
 }
 impl Default for SolveConfig {
     fn default() -> Self {
@@ -274,7 +323,6 @@ impl Default for SolveConfig {
             relative_tolerance: 1e-13,
             absolute_tolerance: 1e-12,
             backward_error_target: 1e-10,
-            reduce: true,
         }
     }
 }

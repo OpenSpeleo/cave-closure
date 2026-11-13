@@ -12,7 +12,7 @@ from ._native import ValidationError as ValidationError
 from ._native import prepare_arrays as prepare_arrays
 from ._native import prepare_json as prepare_json
 
-class Mode(StrEnum):
+class LoopClosureMode(StrEnum):
     SPATIAL = "spatial"
     HORIZONTAL = "horizontal"
 
@@ -24,7 +24,7 @@ def prepare_buffers(
     endpoints: Any,
     displacements: Any,
     covariances: Any,
-    mode: Mode,
+    mode: LoopClosureMode,
     algorithm: LoopClosureAlgorithm = ...,
     preserved_z: Sequence[float] | None = ...,
     controls: Sequence[Any] = ...,

@@ -6,9 +6,9 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-from cave_closure import prepare_json
+from cave_closure import LoopClosureAlgorithm, prepare_json
 from fixture_corpus import (
-    SOLVERS,
+    ALGORITHMS,
     coordinate_tolerance,
     generate_solver_results,
     verify_result,
@@ -49,7 +49,7 @@ def test_corpus_is_complete():
     assert len({case["name"] for case in CASES}) == len(CASES)
     inputs, artifacts = set(), set()
     for case in CASES:
-        assert set(case["results"]) == set(SOLVERS)
+        assert set(case["results"]) == set(ALGORITHMS)
         inputs.add(case["input"])
         for name in (case["input"], case["reference"], *case["results"].values()):
             assert Path(name).name == name
@@ -93,14 +93,14 @@ def test_reference_satisfies_independent_optimality_checks(fixture_case):
             )
 
 
-@pytest.mark.parametrize("solver", SOLVERS)
+@pytest.mark.parametrize("solver", ALGORITHMS)
 def test_saved_solver_result_matches_ground_truth(fixture_case, solver):
     case, problem, expected, system = fixture_case
     result = json.loads((FIXTURES / case["results"][solver]).read_text())
     verify_result(problem, expected, result, solver, system=system)
 
 
-@pytest.mark.parametrize("solver", SOLVERS)
+@pytest.mark.parametrize("solver", ALGORITHMS)
 def test_fresh_native_solver_matches_ground_truth(
     fixture_case, solver, fresh_native_results
 ):
@@ -121,16 +121,24 @@ def test_fresh_native_solver_matches_ground_truth(
     )
 
 
-@pytest.mark.parametrize("reduce", [False, True], ids=["unreduced_pcg", "reduced_pcg"])
+@pytest.mark.parametrize(
+    "reduce", [False, True], ids=["LSE_UNREDUCED_PCG", "LSE_REDUCED_PCG"]
+)
 def test_installed_python_solver_matches_ground_truth(fixture_case, reduce):
     _, problem, expected, system = fixture_case
-    report = prepare_json(json.dumps(problem)).solve(reduce=reduce)
+    report = prepare_json(
+        json.dumps(problem),
+        algorithm=(
+            LoopClosureAlgorithm.LSE_REDUCED_PCG
+            if reduce
+            else LoopClosureAlgorithm.LSE_UNREDUCED_PCG
+        ),
+    ).solve()
     report.require_converged()
-    solver = "reduced_pcg" if reduce else "unreduced_pcg"
+    solver = "LSE_REDUCED_PCG" if reduce else "LSE_UNREDUCED_PCG"
     result = {
         "schema_version": 1,
-        "solver": solver,
-        "reduce": reduce,
+        "algorithm": solver,
         "report": json.loads(report.to_json()),
     }
     verify_result(problem, expected, result, solver, system=system)
@@ -141,7 +149,9 @@ def test_comparison_rejects_incorrect_results(field):
     problem = json.loads((FIXTURES / "controlled_tree.json").read_text())
     expected = json.loads((FIXTURES / "controlled_tree.reference.json").read_text())
     result = copy.deepcopy(
-        json.loads((FIXTURES / "controlled_tree.reduced_pcg.result.json").read_text())
+        json.loads(
+            (FIXTURES / "controlled_tree.LSE_REDUCED_PCG.result.json").read_text()
+        )
     )
     if field == "coordinates":
         result["report"]["coordinates"][1]["value"][0] += 0.01
@@ -150,4 +160,4 @@ def test_comparison_rejects_incorrect_results(field):
     else:
         result["report"]["diagnostics"]["objective"] += 1.0
     with pytest.raises(AssertionError):
-        verify_result(problem, expected, result, "reduced_pcg")
+        verify_result(problem, expected, result, "LSE_REDUCED_PCG")

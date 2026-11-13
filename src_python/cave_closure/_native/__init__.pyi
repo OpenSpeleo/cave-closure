@@ -32,7 +32,6 @@ class Prepared:
         self,
         *,
         max_iterations: builtins.int = 10000,
-        reduce: typing.Optional[builtins.bool] = None,
         cancellation: typing.Optional[CancellationToken] = None,
     ) -> Report: ...
 
@@ -56,6 +55,10 @@ class ValidationError(builtins.ValueError): ...
 
 @typing.final
 class LoopClosureAlgorithm(enum.Enum):
+    r"""
+    Numerical algorithm used for covariance-weighted loop closure.
+    """
+
     LSE_REDUCED_PCG = ...
     LSE_UNREDUCED_PCG = ...
     LSE_SPARSE_QR = ...
@@ -63,6 +66,8 @@ class LoopClosureAlgorithm(enum.Enum):
 
     @property
     def name(self) -> builtins.str: ...
+    @staticmethod
+    def variants() -> builtins.list[LoopClosureAlgorithm]: ...
 
 def prepare_arrays(
     station_ids: typing.Sequence[builtins.str],
@@ -100,6 +105,7 @@ def prepare_arrays(
 def prepare_json(
     input: builtins.str,
     *,
+    algorithm: typing.Optional[LoopClosureAlgorithm] = None,
     require_control: builtins.bool = False,
     allow_shared_reading_approximation: builtins.bool = False,
     max_stations: builtins.int = 1000000,

@@ -25,7 +25,7 @@ from cave_closure._native import (
 
 __all__ = [
     "CancellationToken",
-    "Mode",
+    "LoopClosureMode",
     "LoopClosureAlgorithm",
     "Prepared",
     "Report",
@@ -40,7 +40,7 @@ __all__ = [
 ]
 
 
-class Mode(StrEnum):
+class LoopClosureMode(StrEnum):
     """Adjustment modes accepted by the array and buffer preparation APIs."""
 
     SPATIAL = "spatial"
@@ -86,7 +86,7 @@ def prepare_buffers(
     endpoints,
     displacements,
     covariances,
-    mode: Mode,
+    mode: LoopClosureMode,
     algorithm: LoopClosureAlgorithm = LoopClosureAlgorithm.LSE_REDUCED_PCG,
     preserved_z=None,
     controls=(),

@@ -3,9 +3,7 @@ use pyo3::{
     exceptions::{PyRuntimeError, PyValueError},
     prelude::*,
 };
-use pyo3_stub_gen::derive::{
-    gen_stub_pyclass, gen_stub_pyclass_enum, gen_stub_pyfunction, gen_stub_pymethods,
-};
+use pyo3_stub_gen::derive::{gen_stub_pyclass, gen_stub_pyfunction, gen_stub_pymethods};
 use std::{
     sync::{Arc, mpsc},
     time::Duration,
@@ -22,31 +20,17 @@ fn error(e: Error) -> PyErr {
         _ => SolveError::new_err(e.to_string()),
     }
 }
-#[gen_stub_pyclass_enum]
-#[pyclass(eq, frozen, from_py_object, module = "cave_closure._native")]
-#[derive(Clone, Copy, PartialEq)]
-enum LoopClosureAlgorithm {
-    #[pyo3(name = "LSE_REDUCED_PCG")]
-    ReducedPcg,
-    #[pyo3(name = "LSE_UNREDUCED_PCG")]
-    UnreducedPcg,
-    #[pyo3(name = "LSE_SPARSE_QR")]
-    SparseQr,
-    #[pyo3(name = "LSE_SPARSE_CHOLESKY")]
-    SparseCholesky,
-}
-
 #[gen_stub_pymethods]
 #[pymethods]
 impl LoopClosureAlgorithm {
+    #[staticmethod]
+    fn variants() -> Vec<Self> {
+        Self::ALL.to_vec()
+    }
+
     #[getter]
     fn name(&self) -> &'static str {
-        match self {
-            Self::ReducedPcg => "LSE_REDUCED_PCG",
-            Self::UnreducedPcg => "LSE_UNREDUCED_PCG",
-            Self::SparseQr => "LSE_SPARSE_QR",
-            Self::SparseCholesky => "LSE_SPARSE_CHOLESKY",
-        }
+        self.as_str()
     }
 }
 
@@ -76,21 +60,18 @@ impl CancellationToken {
 #[pyclass(frozen, module = "cave_closure._native")]
 struct Prepared {
     inner: Arc<PreparedProblem>,
-    reduce: bool,
 }
 #[gen_stub_pymethods]
 #[pymethods]
 impl Prepared {
-    #[pyo3(signature=(*, max_iterations=10000, reduce=None, cancellation=None))]
+    #[pyo3(signature=(*, max_iterations=10000, cancellation=None))]
     fn solve(
         &self,
         py: Python<'_>,
         max_iterations: usize,
-        reduce: Option<bool>,
         cancellation: Option<&CancellationToken>,
     ) -> PyResult<Report> {
         let prepared = Arc::clone(&self.inner);
-        let reduce = reduce.unwrap_or(self.reduce);
         let control = cancellation.map_or_else(SolveControl::default, |c| c.inner.clone());
         let worker_control = control.clone();
         let (sender, mut receiver) = mpsc::sync_channel(1);
@@ -98,7 +79,6 @@ impl Prepared {
             let result = prepared.solve(
                 &SolveConfig {
                     max_iterations,
-                    reduce,
                     ..Default::default()
                 },
                 &mut Workspace::default(),
@@ -171,15 +151,19 @@ impl Report {
 }
 #[gen_stub_pyfunction(module = "cave_closure._native")]
 #[pyfunction]
-#[pyo3(signature=(input, *, require_control=false, allow_shared_reading_approximation=false, max_stations=1000000, max_observations=4000000))]
+#[pyo3(signature=(input, *, algorithm=None, require_control=false, allow_shared_reading_approximation=false, max_stations=1000000, max_observations=4000000))]
 fn prepare_json(
     input: &str,
+    algorithm: Option<LoopClosureAlgorithm>,
     require_control: bool,
     allow_shared_reading_approximation: bool,
     max_stations: usize,
     max_observations: usize,
 ) -> PyResult<Prepared> {
-    let p = json::from_json(input).map_err(error)?;
+    let mut p = json::from_json(input).map_err(error)?;
+    if let Some(algorithm) = algorithm {
+        p.algorithm = algorithm;
+    }
     prepare(
         &p,
         &PrepareOptions {
@@ -191,7 +175,6 @@ fn prepare_json(
     )
     .map(|inner| Prepared {
         inner: Arc::new(inner),
-        reduce: true,
     })
     .map_err(error)
 }
@@ -200,7 +183,7 @@ type RelationshipRow = (String, String, usize, usize, [f64; 3]);
 #[gen_stub_pyfunction(module = "cave_closure._native")]
 #[pyfunction]
 #[allow(clippy::too_many_arguments)]
-#[pyo3(signature=(station_ids, observation_ids, endpoints, displacements, covariances, *, mode, algorithm=LoopClosureAlgorithm::ReducedPcg, preserved_z=None, controls=vec![], relationships=vec![], reading_ids=None, provenance=vec![], require_control=false, allow_shared_reading_approximation=false))]
+#[pyo3(signature=(station_ids, observation_ids, endpoints, displacements, covariances, *, mode, algorithm=LoopClosureAlgorithm::LseReducedPcg, preserved_z=None, controls=vec![], relationships=vec![], reading_ids=None, provenance=vec![], require_control=false, allow_shared_reading_approximation=false))]
 fn prepare_arrays(
     station_ids: Vec<String>,
     observation_ids: Vec<String>,
@@ -240,8 +223,8 @@ fn prepare_arrays(
             .ok_or_else(|| ValidationError::new_err("station index out of bounds"))
     };
     let mode = match (mode, preserved_z) {
-        ("spatial", None) => Mode::Spatial,
-        ("horizontal", Some(z)) if z.len() == n => Mode::Horizontal {
+        ("spatial", None) => LoopClosureMode::Spatial,
+        ("horizontal", Some(z)) if z.len() == n => LoopClosureMode::Horizontal {
             preserved_z: ids.iter().cloned().zip(z).collect(),
         },
         _ => {
@@ -317,20 +300,6 @@ fn prepare_arrays(
             })
         })
         .collect::<PyResult<Vec<_>>>()?;
-    let (backend, reduce) = match algorithm {
-        LoopClosureAlgorithm::ReducedPcg => (LinearBackend::ReducedPcg, true),
-        LoopClosureAlgorithm::UnreducedPcg => (LinearBackend::ReducedPcg, false),
-        #[cfg(feature = "sparse-direct")]
-        LoopClosureAlgorithm::SparseQr => (LinearBackend::SparseQr, false),
-        #[cfg(feature = "sparse-direct")]
-        LoopClosureAlgorithm::SparseCholesky => (LinearBackend::SparseCholesky, false),
-        #[cfg(not(feature = "sparse-direct"))]
-        LoopClosureAlgorithm::SparseQr | LoopClosureAlgorithm::SparseCholesky => {
-            return Err(ValidationError::new_err(
-                "algorithm requires a build with the sparse-direct feature",
-            ));
-        }
-    };
     let p = NormalizedProblem {
         schema_version: 1,
         frame: Frame {
@@ -343,10 +312,7 @@ fn prepare_arrays(
         observations,
         controls,
         relationships,
-        algorithm: Algorithm {
-            objective: Objective::Gaussian,
-            backend,
-        },
+        algorithm,
     };
     prepare(
         &p,
@@ -358,7 +324,6 @@ fn prepare_arrays(
     )
     .map(|inner| Prepared {
         inner: Arc::new(inner),
-        reduce,
     })
     .map_err(error)
 }

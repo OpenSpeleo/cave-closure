@@ -23,6 +23,7 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 thiserror = "2"
 schemars = "1"
+ts-rs = { version = "7", features = ["no-serde-warnings"] }
 faer = { version = "0.24", optional = true }
 pyo3 = { version = "0.30", optional = true }
 # Upstream supports PyO3 0.30; the latest registry release still excludes it.

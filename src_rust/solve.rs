@@ -415,7 +415,7 @@ impl PreparedProblem {
         }
         // Qualify grounding in the assembled floating-point system. A weak
         // unary control can disappear when added to a strong network diagonal.
-        let validate_normal_grounding = match self.source.algorithm.backend {
+        let validate_normal_grounding = match self.source.algorithm.backend()? {
             #[cfg(feature = "sparse-direct")]
             LinearBackend::SparseQr => false,
             _ => true,
@@ -447,10 +447,10 @@ impl PreparedProblem {
             }
         }
         let (mut q, mut status, mut iterations, kernel_unknowns) =
-            match self.source.algorithm.backend {
-                LinearBackend::ReducedPcg => {
+            match self.source.algorithm.backend()? {
+                LinearBackend::Pcg => {
                     let mut h = original.clone();
-                    let records = if config.reduce {
+                    let records = if self.source.algorithm == LoopClosureAlgorithm::LseReducedPcg {
                         reduce(&mut h, control)
                     } else {
                         Vec::new()
@@ -480,7 +480,9 @@ impl PreparedProblem {
                 }
             };
         let mut refinement_steps = 0;
-        if matches!(self.source.algorithm.backend, LinearBackend::ReducedPcg) && config.reduce {
+        if matches!(self.source.algorithm.backend()?, LinearBackend::Pcg)
+            && (self.source.algorithm == LoopClosureAlgorithm::LseReducedPcg)
+        {
             for _ in 0..config.max_refinement_steps {
                 if status != Termination::Converged || control.is_cancelled() {
                     break;
@@ -560,7 +562,8 @@ impl PreparedProblem {
                         if d == 3 {
                             v[2]
                         } else {
-                            let Mode::Horizontal { preserved_z } = &self.source.mode else {
+                            let LoopClosureMode::Horizontal { preserved_z } = &self.source.mode
+                            else {
                                 unreachable!()
                             };
                             preserved_z[id]

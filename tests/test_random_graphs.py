@@ -4,7 +4,7 @@ import json
 
 import numpy as np
 import pytest
-from cave_closure import coordinates, prepare_json
+from cave_closure import LoopClosureAlgorithm, coordinates, prepare_json
 from generate_graphs import design, generate_graph, reference
 
 
@@ -18,7 +18,9 @@ def test_generated_graph_against_independent_pivoted_qr(seed, topology):
     prepared = prepare_json(json.dumps(problem))
     reduced = prepared.solve()
     reduced.require_converged()
-    ordinary = prepared.solve(reduce=False)
+    ordinary = prepare_json(
+        json.dumps(problem), algorithm=LoopClosureAlgorithm.LSE_UNREDUCED_PCG
+    ).solve()
     ordinary.require_converged()
     for actual in [coordinates(reduced), coordinates(ordinary)]:
         for station, value in expected["coordinates"].items():

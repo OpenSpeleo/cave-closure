@@ -115,6 +115,7 @@ pub fn prepare(
     {
         return Err(invalid("configured input resource limit exceeded"));
     }
+    problem.algorithm.backend()?;
     let mut source = problem.clone();
     source.stations.sort_by(|a, b| a.id.cmp(&b.id));
     source
@@ -141,7 +142,7 @@ pub fn prepare(
     };
     let n = ids.len();
     let d = source.mode.dimension();
-    if let Mode::Horizontal { preserved_z } = &source.mode
+    if let LoopClosureMode::Horizontal { preserved_z } = &source.mode
         && (preserved_z.len() != n
             || ids.iter().any(|id| !preserved_z.contains_key(id))
             || !finite(preserved_z.values().copied()))

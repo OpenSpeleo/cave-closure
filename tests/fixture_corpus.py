@@ -12,7 +12,12 @@ from pathlib import Path
 
 import numpy as np
 
-SOLVERS = ("reduced_pcg", "unreduced_pcg", "sparse_qr", "sparse_cholesky")
+ALGORITHMS = (
+    "LSE_REDUCED_PCG",
+    "LSE_UNREDUCED_PCG",
+    "LSE_SPARSE_QR",
+    "LSE_SPARSE_CHOLESKY",
+)
 
 
 def generate_solver_results(fixtures: Path, output: Path):
@@ -67,8 +72,7 @@ def verify_result(problem, reference, result, solver, *, system=None):
     from generate_graphs import design  # noqa: PLC0415 - circular import
 
     assert result["schema_version"] == 1
-    assert result["solver"] == solver
-    assert result["reduce"] == (solver == "reduced_pcg")
+    assert result["algorithm"] == solver
     report = result["report"]
     assert report["schema_version"] == 1
     assert report["status"] == "converged"

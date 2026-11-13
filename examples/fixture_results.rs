@@ -1,7 +1,7 @@
 //! Compute the persisted fixture corpus with every implemented linear solver.
 //! Independent Python references, rather than these outputs, define the optimum.
 use cave_closure::{
-    LinearBackend, SolveConfig, SolveControl, SolveReport, Workspace, json, prepare,
+    LoopClosureAlgorithm, SolveConfig, SolveControl, SolveReport, Workspace, json, prepare,
 };
 use serde::{Deserialize, Serialize};
 use std::{collections::BTreeMap, error::Error, fs, path::Path};
@@ -25,8 +25,7 @@ struct Case {
 #[derive(Serialize)]
 struct SolverResult {
     schema_version: u32,
-    solver: &'static str,
-    reduce: bool,
+    algorithm: LoopClosureAlgorithm,
     report: SolveReport,
 }
 
@@ -53,48 +52,40 @@ fn main() -> Result<(), Box<dyn Error>> {
         return Err("unsupported or empty fixture corpus".into());
     }
     fs::create_dir_all(output)?;
-    let solvers = [
-        ("reduced_pcg", LinearBackend::ReducedPcg, true),
-        ("unreduced_pcg", LinearBackend::ReducedPcg, false),
-        ("sparse_qr", LinearBackend::SparseQr, false),
-        ("sparse_cholesky", LinearBackend::SparseCholesky, false),
-    ];
+    let algorithms = LoopClosureAlgorithm::ALL;
     for case in corpus.cases {
         // Validate every manifest path, including the independently generated reference.
         member(fixtures, &case.reference)?;
         let original = json::from_json(&fs::read_to_string(member(fixtures, &case.input)?)?)?;
-        if case.results.len() != solvers.len() {
+        if case.results.len() != algorithms.len() {
             return Err(format!("{}: incomplete solver manifest", case.name).into());
         }
-        for (solver, backend, reduce) in solvers {
+        for algorithm in algorithms {
+            let name = algorithm.as_str();
             let mut problem = original.clone();
-            problem.algorithm.backend = backend;
+            problem.algorithm = algorithm;
             let started = std::time::Instant::now();
             let report = prepare(&problem, &Default::default())?.solve(
-                &SolveConfig {
-                    reduce,
-                    ..Default::default()
-                },
+                &SolveConfig::default(),
                 &mut Workspace::default(),
                 &SolveControl::default(),
             )?;
             report
                 .require_converged()
-                .map_err(|error| format!("{} / {solver}: {error}", case.name))?;
+                .map_err(|error| format!("{} / {name}: {error}", case.name))?;
             // The core's serializer explicitly rejects non-finite diagnostics/results.
             report.to_json()?;
             let result = SolverResult {
                 schema_version: 1,
-                solver,
-                reduce,
+                algorithm,
                 report,
             };
             fs::write(
-                member(output, &case.results[solver])?,
+                member(output, &case.results[name])?,
                 serde_json::to_string(&result)?,
             )?;
             println!(
-                "{} / {solver}: converged ({:.3}s)",
+                "{} / {name}: converged ({:.3}s)",
                 case.name,
                 started.elapsed().as_secs_f64()
             );

@@ -175,3 +175,6 @@ tests/*.xml
 !tests/artifacts/*.tml
 !tests/artifacts/private/*.encrypted
 !tests/artifacts/stalagmight.geojson
+
+!tests/fixtures/*.json
+!schemas/*.json

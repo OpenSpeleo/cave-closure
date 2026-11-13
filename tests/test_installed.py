@@ -11,7 +11,7 @@ import pytest
 from cave_closure import (
     CancellationToken,
     LoopClosureAlgorithm,
-    Mode,
+    LoopClosureMode,
     coordinate_buffer,
     coordinates,
     prepare_arrays,
@@ -49,7 +49,7 @@ def arrays():
         endpoints=np.array([[0, 1], [1, 2]], dtype=np.uint64),
         displacements=np.array([[10, 0, 0], [10, 0, 0]], dtype=np.float64),
         covariances=np.array([np.eye(3), 4 * np.eye(3)]),
-        mode=Mode.SPATIAL,
+        mode=LoopClosureMode.SPATIAL,
         controls=[
             ("a", 0, [0, 1, 2], [0.0, 0.0, 0.0], None),
             ("c", 2, [0, 1, 2], [21.0, 0.0, 0.0], None),
@@ -58,7 +58,7 @@ def arrays():
 
 
 @pytest.mark.parametrize("prepare", [prepare_arrays, prepare_buffers])
-@pytest.mark.parametrize("mode", list(Mode))
+@pytest.mark.parametrize("mode", list(LoopClosureMode))
 @pytest.mark.parametrize("algorithm", ALGORITHMS)
 @pytest.mark.parametrize("as_string", [False, True])
 def test_adjustment_modes(prepare, mode, algorithm, as_string):
@@ -66,13 +66,15 @@ def test_adjustment_modes(prepare, mode, algorithm, as_string):
     args["mode"] = mode.value if as_string else mode
     args["algorithm"] = algorithm
     args["controls"] = []
-    if mode is Mode.HORIZONTAL:
+    if mode is LoopClosureMode.HORIZONTAL:
         args["preserved_z"] = [5.0, 7.0, 9.0]
     result = prepare(**args).solve()
     result.require_converged()
     positions = coordinates(result)
     assert positions["B"][:2] == pytest.approx((10.0, 0.0))
-    expected_z = (5.0, 7.0, 9.0) if mode is Mode.HORIZONTAL else (0.0, 0.0, 0.0)
+    expected_z = (
+        (5.0, 7.0, 9.0) if mode is LoopClosureMode.HORIZONTAL else (0.0, 0.0, 0.0)
+    )
     assert tuple(positions[station][2] for station in ["A", "B", "C"]) == expected_z
 
 
@@ -166,7 +168,7 @@ def test_random_full_covariance_against_independent_dense_qr(seed, algorithm):
         edges,
         observed.tolist(),
         covariance.tolist(),
-        mode=Mode.SPATIAL,
+        mode=LoopClosureMode.SPATIAL,
         algorithm=algorithm,
         controls=[("anchor", 0, [0, 1, 2], [0, 0, 0], None)],
     ).solve()
@@ -182,7 +184,9 @@ def test_random_full_covariance_against_independent_dense_qr(seed, algorithm):
 
 
 def test_iteration_exhaustion_rejected_by_strict_api():
-    result = prepare_json(FIXTURE.read_text()).solve(max_iterations=0, reduce=False)
+    result = prepare_json(
+        FIXTURE.read_text(), algorithm=LoopClosureAlgorithm.LSE_UNREDUCED_PCG
+    ).solve(max_iterations=0)
     assert result.status == "IterationLimit"
     with pytest.raises(RuntimeError):
         result.require_converged()
@@ -208,12 +212,12 @@ def without_numpy(name, *args, **kwargs):
     return original(name, *args, **kwargs)
 builtins.__import__ = without_numpy
 from array import array
-from cave_closure import Mode, prepare_buffers, coordinates
+from cave_closure import LoopClosureAlgorithm, LoopClosureMode, prepare_buffers, coordinates
 endpoints = memoryview(array('Q', [0,1])).cast('B').cast('Q', shape=(1,2))
 displacements = memoryview(array('d', [10.,0.,0.])).cast('B').cast('d', shape=(1,3))
 covariances = memoryview(array('d', [1.,0.,0.,0.,1.,0.,0.,0.,1.])).cast('B').cast('d', shape=(1,3,3))
 prepared = prepare_buffers(station_ids=['A','B'], observation_ids=['ab'], endpoints=endpoints,
-                           displacements=displacements, covariances=covariances, mode=Mode.SPATIAL)
+                           displacements=displacements, covariances=covariances, mode=LoopClosureMode.SPATIAL)
 result = prepared.solve()
 result.require_converged()
 assert coordinates(result)['B'] == (10.,0.,0.)

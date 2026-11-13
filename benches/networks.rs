@@ -37,15 +37,12 @@ fn main() {
                     length_unit: LengthUnit::Metres,
                     provenance: vec!["synthetic chain/ring".into()],
                 },
-                mode: Mode::Spatial,
+                mode: LoopClosureMode::Spatial,
                 stations,
                 observations,
                 controls: vec![],
                 relationships: vec![],
-                algorithm: Algorithm {
-                    objective: Objective::Gaussian,
-                    backend: LinearBackend::ReducedPcg,
-                },
+                algorithm: LoopClosureAlgorithm::LseReducedPcg,
             };
             let mut preparation_times = Vec::new();
             let mut solve_times = Vec::new();
