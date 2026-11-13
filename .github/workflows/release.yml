@@ -49,6 +49,8 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@v7
         with:
+          # Wheel builds do not populate uv's dependency cache.
+          enable-cache: false
           python-version: ${{ matrix.python }}
 
       - name: Build wheels
@@ -107,6 +109,8 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@v7
         with:
+          # Wheel builds do not populate uv's dependency cache.
+          enable-cache: false
           python-version: ${{ matrix.python }}
 
       - name: Build wheels
@@ -158,14 +162,14 @@ jobs:
           mkdir extracted
           tar -xzf source/*.tar.gz -C extracted --strip-components=1
 
-      - name: Install uv (with cache)
+      - name: Install uv (x86 hosts)
         if: ${{ matrix.platform.runner != 'windows-11-arm' }}
         uses: astral-sh/setup-uv@v7
         with:
-          enable-cache: true
+          enable-cache: false
           python-version: ${{ matrix.python }}
 
-      - name: Install uv (no cache)
+      - name: Install uv (ARM host)
         if: ${{ matrix.platform.runner == 'windows-11-arm' }}
         uses: astral-sh/setup-uv@v7
         with:
@@ -221,6 +225,8 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@v7
         with:
+          # Wheel builds do not populate uv's dependency cache.
+          enable-cache: false
           python-version: ${{ matrix.python }}
 
       - name: Build wheels

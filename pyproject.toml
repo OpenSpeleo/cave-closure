@@ -4,6 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "cave_closure"
+# Maturin reads the binding crate's inherited Cargo workspace version.
 dynamic = ["version"]
 description = "Explicit covariance-weighted cave survey adjustment"
 readme = "README.md"
