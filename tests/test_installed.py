@@ -61,7 +61,7 @@ def arrays():
 @pytest.mark.parametrize("mode", list(LoopClosureMode))
 @pytest.mark.parametrize("algorithm", ALGORITHMS)
 @pytest.mark.parametrize("as_string", [False, True])
-def test_adjustment_modes(prepare, mode, algorithm, as_string):
+def test_correction_modes(prepare, mode, algorithm, as_string):
     args = arrays()
     args["mode"] = mode.value if as_string else mode
     args["algorithm"] = algorithm

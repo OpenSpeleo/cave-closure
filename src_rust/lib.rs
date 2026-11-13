@@ -1,4 +1,4 @@
-//! Independent linear survey adjustment in a caller-supplied local ENU frame.
+//! Independent linear survey loop closure in a caller-supplied local ENU frame.
 //! Gaussian covariance models and numerical backends are separate choices.
 pub mod json;
 mod model;

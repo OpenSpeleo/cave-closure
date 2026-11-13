@@ -6,7 +6,7 @@ build-backend = "maturin"
 name = "cave-closure"
 # Maturin reads the version from Cargo.toml.
 dynamic = ["version"]
-description = "Explicit covariance-weighted cave survey adjustment"
+description = "Explicit covariance-weighted cave survey loop closure"
 readme = "README.md"
 requires-python = ">=3.11"
 license = "AGPL-3.0-or-later"

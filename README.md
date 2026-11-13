@@ -1,12 +1,12 @@
 # cave-closure
 
-Independent Gaussian weighted least-squares adjustment of oriented survey
+Independent Gaussian weighted least-squares correction of oriented survey
 multigraphs in local ENU metres. The Rust core has no consumer, geographic,
 Tauri, or Python dependency. This source tree is standalone; upstream and
 registry identities must be supplied before publication or submodule
 registration.
 
-The caller selects spatial or marginal-horizontal adjustment. Horizontal mode
+The caller selects spatial or marginal-horizontal loop closure. Horizontal mode
 requires an explicit preserved-Z value for every station. Covariance models
 include supplied SPD matrices, equal isotropic variance, length-proportional
 variance, and uncalibrated relative weights. No variance floor is inserted.
@@ -57,7 +57,7 @@ Both bulk APIs accept `algorithm=LoopClosureAlgorithm.LSE_REDUCED_PCG` (the
 default), `LSE_UNREDUCED_PCG`, `LSE_SPARSE_QR`, or `LSE_SPARSE_CHOLESKY`. Import
 `LoopClosureAlgorithm` from `cave_closure`; it is a Rust enum exposed through
 PyO3. Standard Python builds include all four algorithms. Spatial and horizontal
-modes select adjustment dimensions independently of the algorithm.
+modes select loop-closure dimensions independently of the algorithm.
 
 The repository uses one Cargo package with Rust sources in `src_rust/` and
 Python sources in `src_python/`. The optional `python` feature enables the

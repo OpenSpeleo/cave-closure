@@ -38,7 +38,7 @@ system size. Direct factorization can incur substantial fill. No performance
 budget or cross-platform bit identity is promised. Deterministic ID ordering
 makes input permutation immaterial within a build.
 
-Huber, general correlated and latent factors, nonlinear raw-reading adjustment,
+Huber, general correlated and latent factors, nonlinear raw-reading correction,
 sequential fundamental-cycle corrections, and influence diagnostics are outside
 the initial released capability. There is no geological prior. Magnetic models,
 CRS transformations, epochs, and vertical datums belong to adapters. Adapters

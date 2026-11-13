@@ -1,4 +1,4 @@
-"""Owned immutable preparation and explicit Gaussian survey adjustment.
+"""Owned immutable preparation and explicit Gaussian survey loop closure.
 
 Coordinates are local ENU metres. Buffers are copied before solving; callers
 must not mutate exporters concurrently with preparation.
@@ -41,7 +41,7 @@ __all__ = [
 
 
 class LoopClosureMode(StrEnum):
-    """Adjustment modes accepted by the array and buffer preparation APIs."""
+    """Loop-closure modes accepted by the array and buffer preparation APIs."""
 
     SPATIAL = "spatial"
     HORIZONTAL = "horizontal"

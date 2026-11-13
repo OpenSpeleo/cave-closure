@@ -3,7 +3,7 @@ name = "cave-closure"
 version = "0.0.1"
 edition = "2024"
 license = "AGPL-3.0-or-later"
-description = "Explicit covariance-weighted cave survey adjustment in local ENU metres"
+description = "Explicit covariance-weighted cave survey loop closure in local ENU metres"
 readme = "README.md"
 
 [lib]
