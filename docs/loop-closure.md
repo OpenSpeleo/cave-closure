@@ -145,3 +145,43 @@ XYZ controls, depth preservation, reversed and repeated legs, zero lengths,
 source-compatible self-observations, malformed inputs, cancellation and
 concurrent reuse. `tests/test_loop_closure_l1.py` checks the owned Python API,
 single-call/prepared agreement, exception types and immutable source evidence.
+
+## Ordered horizontal Rust compatibility API
+
+`cave_closure::horizontal::HorizontalProblem` accepts already-contracted groups,
+optional exact XY controls, and ordered observations. Each observation carries
+endpoint indexes, an interpreted XY displacement, slope length, true-north bearing
+in radians, and quality. The problem supplies base length and bearing sigmas.
+Results contain coordinates in group order and per-axis termination, iteration
+count, and original-system infinity residual.
+
+This API preserves Stalagmight's scalar horizontal solver behavior. It is distinct
+from the measurement API's `length_azimuth_diagonal` model: it keeps measured-position
+warm starts and jointly ordered X/Y reduction, without centroid controls, block
+factorization, or refinement. Weight propagation retains the source sqrt/square
+round trip. Nonpositive/nonfinite quality uses one; zero variance omits that axis.
+Same-group observations are skipped and parallel observations accumulate in order.
+
+The caller chooses exact relationship groups and controls, interprets instrument
+bearings and horizontal projection, and reconstructs its application geometry.
+The crate owns all numerical weighting, sparse assembly, reduction, PCG, and
+back-substitution. Displacement is supplied separately from slope length so a
+caller can retain historical projection rules, including a clamped zero projection.
+No geographic or depth model, consumer types, or Python dependency enters this API.
+
+Ordering is part of this compatibility contract. Supply groups in deterministic
+order and observations in source order. Uncontrolled axes retain the translation
+selected by measured warm starts and scalar elimination, rather than an artificial
+centroid gauge. A fixed group returns its supplied XY exactly. Empty requests are
+valid; malformed indexes and nonfinite coordinates/observations are errors.
+
+`solve(&SolveControl)` borrows immutable evidence and creates a separate workspace
+for every call, allowing concurrent reuse. Cancellation returns an incomplete error.
+Finite historical PCG exits return their iterate with an explicit kernel termination
+reason; callers requiring convergence must inspect both axis diagnostics. Nonfinite
+reconstruction or residuals return numerical errors. Residual diagnostics do not
+silently change the historical stopping rule or claim calibrated statistics.
+
+The existing measurement, Gaussian, L1, Python and interchange APIs are unchanged.
+`tests/horizontal.rs` checks the new public contract. Kernel tests include dense
+independent references and floating-axis regressions migrated from Stalagmight.

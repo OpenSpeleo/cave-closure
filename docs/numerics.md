@@ -22,7 +22,7 @@ statistics eligibility additionally assumes the caller's covariance and Gaussian
 model are valid. No residual is a probability of blunder. Series chains can have
 indistinguishable standardized residuals; controls create redundancy even on trees.
 
-Every solve validates the reconstructed normal-system residual and computes
+Every Gaussian solve validates the reconstructed normal-system residual and computes
 original observation residuals, objective, hard-constraint discrepancy, actual
 kernel size, iterations, and scaled infinity-norm backward error. The default
 backward error target is numerical, not an accuracy guarantee. Poor conditioning,
@@ -97,3 +97,9 @@ differences. Debug-wheel timings must not be compared with release benchmarks.
 `coordinate_buffer(result)` exports a read-only owned copy with three native
 doubles per sorted station. Its memoryview retains a bytes owner independently
 of result lifetime. This interface deliberately makes no zero-copy promise.
+
+The Rust `horizontal` compatibility API retains its historical scalar stopping
+rules and measured-position warm starts. It reports original-system residuals but
+does not apply the Gaussian backend's refinement or backward-error acceptance
+policy. Finite incomplete iterates carry their kernel termination reason. See the
+[horizontal API contract](loop-closure.md#ordered-horizontal-rust-compatibility-api).

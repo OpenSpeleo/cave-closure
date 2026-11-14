@@ -1,6 +1,7 @@
 //! Independent linear survey loop closure in a caller-supplied local ENU frame.
 //! Gaussian covariance models and numerical backends are separate choices.
 mod graph;
+pub mod horizontal;
 pub mod json;
 pub mod l1;
 pub mod loop_closure;

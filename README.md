@@ -106,6 +106,10 @@ The `generate-stubs` pre-commit hook runs this check, including in CI.
 `src_python/cave_closure/__init__.pyi` re-exports the generated API and
 describes the Python helpers.
 
+The Rust-only `horizontal` API also accepts ordered, precontracted groups and
+interpreted XY observations for scalar warm-start compatibility. Its numerical
+contract and caller responsibilities are documented with the measurement API.
+
 See [measurement-based loop closure](docs/loop-closure.md),
 [the numerical contract](docs/numerics.md),
 [interchange contract](docs/interchange.md), and

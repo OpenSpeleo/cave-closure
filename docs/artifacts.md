@@ -24,7 +24,6 @@ variants on each platform:
 | Windows x86-64 | `windows-latest`   |
 | Windows ARM64  | `windows-11-arm`   |
 | macOS ARM64    | `macos-latest`     |
-| macOS Intel    | `macos-15-intel`   |
 
 Builds run directly on the runners without containers or cross-compilation.
 Python test coverage is authoritative in the CI matrix; release wheel build
