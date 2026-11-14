@@ -87,6 +87,13 @@ ordinary Python versions without rebuilding for each interpreter. See
 [artifact qualification](docs/artifacts.md) for the runner matrix and Linux
 compatibility limits.
 
+Local checks, CI, and release builds use the exact Rust toolchain declared in
+`rust-toolchain.toml`, including its Clippy and rustfmt components. Run commands
+from this repository directory so rustup selects that pin. Update the toolchain
+file deliberately and validate both Clippy configurations when changing it;
+`rustup update` alone must not change the version used by this project. CI logs
+the selected compiler and Clippy versions before validation.
+
 Run checks directly from this tree:
 
 ```sh

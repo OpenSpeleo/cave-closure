@@ -30,6 +30,12 @@ jobs:
         with:
           python-version: "3.14"
 
+      - name: Select and report the pinned Rust toolchain
+        run: |
+          rustup show
+          rustc --version
+          cargo clippy --version
+
       - uses: j178/prek-action@v2
         with:
           install-only: true
@@ -65,8 +71,11 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
 
-      - name: Install the toolchain declared by rust-toolchain.toml
-        run: rustup show
+      - name: Select and report the pinned Rust toolchain
+        run: |
+          rustup show
+          rustc --version
+          cargo clippy --version
 
       - name: Install the package and test dependencies
         run: |
@@ -92,10 +101,11 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Install the toolchain declared by rust-toolchain.toml
+      - name: Select and report the pinned Rust toolchain
         run: |
-          rustup update
           rustup show
+          rustc --version
+          cargo clippy --version
 
       - name: lint
         run: |

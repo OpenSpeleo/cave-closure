@@ -57,12 +57,15 @@ fn solve_reduced_laplacian_matches_dense() {
             a.swap(col, piv);
             b.swap(col, piv);
             let d = a[col][col];
-            for r in (col + 1)..n {
-                let f = a[r][col] / d;
-                for c in col..n {
-                    a[r][c] -= f * a[col][c];
+            let pivot_rhs = b[col];
+            let (leading, trailing) = a.split_at_mut(col + 1);
+            let pivot_row = &leading[col];
+            for (row, rhs) in trailing.iter_mut().zip(&mut b[(col + 1)..]) {
+                let f = row[col] / d;
+                for (value, pivot_value) in row[col..].iter_mut().zip(&pivot_row[col..]) {
+                    *value -= f * pivot_value;
                 }
-                b[r] -= f * b[col];
+                *rhs -= f * pivot_rhs;
             }
         }
         let mut x = vec![0.0; n];

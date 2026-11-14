@@ -42,6 +42,12 @@ jobs:
           enable-cache: false
           python-version: ${{ env.MINIMUM_PYTHON_VERSION }}
 
+      - name: Select and report the pinned Rust toolchain
+        run: |
+          rustup show
+          rustc --version
+          cargo clippy --version
+
       - name: Build wheels
         uses: PyO3/maturin-action@v1
         with:
@@ -102,8 +108,11 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Install the toolchain declared by rust-toolchain.toml
-        run: rustup show
+      - name: Select and report the pinned Rust toolchain
+        run: |
+          rustup show
+          rustc --version
+          cargo clippy --version
 
       - name: Build sdist
         uses: PyO3/maturin-action@v1
@@ -154,6 +163,12 @@ jobs:
           enable-cache: false
           python-version: ${{ steps.python.outputs.version }}
 
+      - name: Select and report the pinned Rust toolchain
+        run: |
+          rustup show
+          rustc --version
+          cargo clippy --version
+
       - name: Build wheels
         uses: PyO3/maturin-action@v1
         with:
@@ -182,8 +197,11 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Install the toolchain declared by rust-toolchain.toml
-        run: rustup show
+      - name: Select and report the pinned Rust toolchain
+        run: |
+          rustup show
+          rustc --version
+          cargo clippy --version
 
       - name: Test and package the Rust core
         run: |
@@ -262,6 +280,8 @@ jobs:
       - name: Repackage and compare before authentication
         run: |
           rustup show
+          rustc --version
+          cargo clippy --version
           cargo package --locked -p cave-closure
           cmp target/package/*.crate "$RUNNER_TEMP/tested-crate/"*.crate
 
