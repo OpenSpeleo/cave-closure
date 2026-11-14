@@ -69,16 +69,23 @@ Python sources in `src_python/`. The optional `python` feature enables the
 bindings; Maturin enables it and all numerical backends for Python builds. Rust
 consumers use the same library without enabling Python.
 
+CI and release use the same native platform matrix in
+`.github/workflows/workflow.yml` and `.github/workflows/release.yml`: Linux,
+Windows, and macOS on both x86-64 and ARM64. CI tests every configured ordinary
+and free-threaded Python interpreter. Release builds the corresponding wheel ABI
+variants. Builds run directly on those runners, without containers or
+cross-compilation.
+
 Release wheels use three ABI paths: `abi3` for ordinary CPython, `abi3t` for
-free-threaded CPython 3.15 and newer, and a version-specific legacy wheel for
-free-threaded CPython 3.14. Python 3.14 predates the
-[free-threaded stable ABI](https://peps.python.org/pep-0803/) and cannot load an
-`abi3t` wheel. In `.github/workflows/release.yml`, `MINIMUM_PYTHON_VERSION`
-selects the `abi3` build interpreter and `MINIMUM_FT_PYTHON_VERSION` selects the
-`abi3t` build interpreter; the legacy 3.14t build remains separate. The
-corresponding ABI floors are declared by the `abi3` and `abi3t` features in
-`Cargo.toml`. CI continues to test each supported Python version, including both
-free-threaded interpreters.
+free-threaded interpreters supporting the stable ABI, and an
+interpreter-specific legacy free-threaded wheel. Build floors are selected by
+`MINIMUM_PYTHON_VERSION` and `MINIMUM_FT_PYTHON_VERSION` in the release
+workflow; the corresponding ABI floors are declared in `Cargo.toml`. Every wheel
+enables both numerical backends, `sparse-direct` and `l1`. Each platform builds
+one ordinary stable-ABI wheel at the minimum interpreter, covering compatible
+ordinary Python versions without rebuilding for each interpreter. See
+[artifact qualification](docs/artifacts.md) for the runner matrix and Linux
+compatibility limits.
 
 Run checks directly from this tree:
 
@@ -86,7 +93,7 @@ Run checks directly from this tree:
 cargo test --locked --all-features
 cargo fmt --all -- --check
 cargo clippy --locked --workspace --all-targets --all-features -- -D warnings
-uv run maturin build --features abi3 --out dist
+uv run maturin build --locked --release --features abi3,sparse-direct,l1,pyo3/extension-module --out dist
 uv run pytest
 uv run --frozen python scripts/generate_stubs.py --check
 ```

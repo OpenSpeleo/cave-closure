@@ -40,12 +40,50 @@ jobs:
             --color always \
             --all-files
 
-  test-rust:
-    if: github.ref_type != 'tag'
+  test-python:
+    needs: linter
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: &runners
+          - ubuntu-latest
+          - ubuntu-24.04-arm
+          - windows-latest
+          - windows-11-arm
+          - macos-latest
+          - macos-15-intel
+        python: ["3.11", "3.12", "3.13", "3.14", "3.15", "3.14t", "3.15t"]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: Install the toolchain declared by rust-toolchain.toml
+        run: rustup show
+
+      - name: Install the package and test dependencies
+        run: |
+          uv sync --all-extras --frozen
+
+      - name: Run tests
+        run: |
+          uv run python --version
+          uv run pytest
+
+  test-rust:
+    needs: linter
+    strategy:
+      fail-fast: false
+      matrix:
+        os: *runners
     runs-on: ${{ matrix.os }}
     defaults:
       run:
@@ -74,41 +112,9 @@ jobs:
           cargo test --locked
           cargo test --locked --all-features
 
-  test-python:
-    if: github.ref_type != 'tag'
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-        python: ["3.11", "3.12", "3.13", "3.14", "3.15", "3.14t", "3.15t"]
-
-    runs-on: ${{ matrix.os }}
-
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          persist-credentials: false
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@v7
-        with:
-          python-version: ${{ matrix.python }}
-
-      - name: Install the toolchain declared by rust-toolchain.toml
-        run: rustup show
-
-      - name: Install the package and test dependencies
-        run: |
-          uv sync --all-extras --frozen
-
-      - name: Run tests
-        run: |
-          uv run python --version
-          uv run pytest
-
   trigger-release:
     name: Trigger release
-    needs: [linter, test-rust, test-python]
+    needs: [test-rust, test-python]
     if: github.event_name == 'push' && github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
     permissions:

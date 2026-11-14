@@ -17,6 +17,49 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  build-python-abi3-wheels:
+    name: Build abi3 (${{ matrix.os }})
+    needs: validate-release
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: &runners
+          - ubuntu-latest
+          - ubuntu-24.04-arm
+          - windows-latest
+          - windows-11-arm
+          - macos-latest
+          - macos-15-intel
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: false
+          python-version: ${{ env.MINIMUM_PYTHON_VERSION }}
+
+      - name: Build wheels
+        uses: PyO3/maturin-action@v1
+        with:
+          args: >-
+            --locked --release --features
+            abi3,sparse-direct,l1,pyo3/extension-module --out dist --interpreter
+            python${{ env.MINIMUM_PYTHON_VERSION }}
+          container: "off"
+          sccache: false
+
+      - name: Upload wheels
+        uses: actions/upload-artifact@v7
+        with:
+          name: wheels-abi3-${{ matrix.os }}
+          path: dist
+          if-no-files-found: error
+
   validate-release:
     name: Validate release tag
     runs-on: ubuntu-latest
@@ -79,117 +122,14 @@ jobs:
   # ======================================== #
   # Python Wheels
   # ======================================== #
-  build-python-abi3-wheels:
-    name: abi3 (${{ matrix.platform.family }}, ${{ matrix.platform.target }})
-    needs: validate-release
-    runs-on: ${{ matrix.platform.runner }}
-    strategy:
-      fail-fast: false
-      matrix:
-        # One abi3 wheel per platform supports the minimum Python and newer.
-        platform:
-          - runner: ubuntu-latest
-            target: x86_64
-            family: manylinux
-          - runner: ubuntu-latest
-            target: x86
-            family: manylinux
-          - runner: ubuntu-latest
-            target: aarch64
-            family: manylinux
-          - runner: ubuntu-latest
-            target: armv7
-            family: manylinux
-          - runner: ubuntu-latest
-            target: ppc64le
-            family: manylinux
-          - runner: ubuntu-latest
-            target: ppc64
-            family: manylinux
-          - runner: ubuntu-latest
-            target: x86_64
-            family: musllinux
-          - runner: ubuntu-latest
-            target: x86
-            family: musllinux
-          - runner: ubuntu-latest
-            target: aarch64
-            family: musllinux
-          - runner: ubuntu-latest
-            target: armv7
-            family: musllinux
-          - runner: ubuntu-latest
-            target: ppc64le
-            family: musllinux
-          - runner: windows-latest
-            target: x86_64
-            family: windows
-          - runner: windows-latest
-            target: x86
-            family: windows
-          - runner: windows-11-arm
-            target: aarch64
-            family: windows
-          - runner: macos-latest
-            target: x86_64
-            family: macos
-          - runner: macos-latest
-            target: aarch64
-            family: macos
-
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          persist-credentials: false
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@v7
-        with:
-          enable-cache: false
-          python-version: ${{ env.MINIMUM_PYTHON_VERSION }}
-
-      - name: Build wheels
-        uses: PyO3/maturin-action@v1
-        with:
-          target: ${{ matrix.platform.target }}
-          args: >-
-            --locked --release --features
-            abi3,sparse-direct,pyo3/extension-module --out dist --interpreter
-            python${{ env.MINIMUM_PYTHON_VERSION }}
-          manylinux: >-
-            ${{ matrix.platform.family == 'musllinux' && 'musllinux_1_2' ||
-            'auto' }}
-          sccache: false
-
-      - name: Upload wheels
-        uses: actions/upload-artifact@v7
-        with:
-          name:
-            wheels-abi3-${{ matrix.platform.family }}-${{ matrix.platform.target
-            }}
-          path: dist
-          if-no-files-found: error
-
   build-python-freethreaded-wheels:
-    name:
-      ${{ matrix.abi }} (${{ matrix.platform.runner }}, ${{
-      matrix.platform.target }})
+    name: ${{ matrix.abi }} (${{ matrix.os }})
     needs: validate-release
-    runs-on: ${{ matrix.platform.runner }}
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        platform:
-          - runner: ubuntu-latest
-            target: x86_64
-          - runner: ubuntu-24.04-arm
-            target: aarch64
-          - runner: windows-latest
-            target: x86_64
-          - runner: macos-latest
-            target: x86_64
-          - runner: macos-latest
-            target: aarch64
+        os: *runners
         # Legacy has no stable ABI; abi3t covers the configured minimum onward.
         abi: [abi3t, legacy-3.14t]
     steps:
@@ -218,20 +158,17 @@ jobs:
       - name: Build wheels
         uses: PyO3/maturin-action@v1
         with:
-          target: ${{ matrix.platform.target }}
           args: >-
             --locked --release ${{ matrix.abi == 'abi3t' && '--features
-            abi3t,sparse-direct,pyo3/extension-module' || '' }} --out dist
+            abi3t,sparse-direct,l1,pyo3/extension-module' || '' }} --out dist
             --interpreter python${{ steps.python.outputs.version }}
-          manylinux: auto
+          container: "off"
           sccache: false
 
       - name: Upload wheels
         uses: actions/upload-artifact@v7
         with:
-          name:
-            wheels-freethreaded-${{ matrix.platform.runner }}-${{
-            matrix.platform.target }}-${{ matrix.abi }}
+          name: wheels-freethreaded-${{ matrix.os }}-${{ matrix.abi }}
           path: dist
           if-no-files-found: error
 
