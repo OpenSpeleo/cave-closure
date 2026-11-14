@@ -66,9 +66,11 @@ coverage, numerical tolerances, and tests that check fresh and saved results.
 The original-system stopping test uses the true residual, not a recursively
 updated PCG residual. Its absolute-plus-relative scale is
 `||H||inf * ||q||inf + ||g||inf`. This accounts for cancellation when large
-coordinates satisfy a small RHS. The separate backward-error target remains
-explicit. The kernel is solved more tightly before reconstruction; up to three
-original-system refinement corrections are available by default. Refinement uses
+coordinates satisfy a small RHS. Kernel stopping and refinement use the same
+scale so that cancellation does not cause a converged iterate to diverge. The
+separate backward-error target remains explicit. The kernel is solved more tightly
+before reconstruction; up to three original-system refinement corrections are
+available by default. Refinement uses
 the same reduction and PCG backend, reports its step count, and respects the total
 iteration budget. A small backward residual still does not establish coordinate
 accuracy in a poorly conditioned survey.

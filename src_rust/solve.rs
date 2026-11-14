@@ -218,8 +218,14 @@ fn pcg(
             .collect::<Vec<_>>()
     };
     let mut r = h.g.clone();
-    let tolerance = config.absolute_tolerance + config.relative_tolerance * norm(&h.g);
-    if norm(&r) <= tolerance && backward(h, &x) <= config.backward_error_target {
+    let matrix_norm = h.norm();
+    let rhs_norm = norm(&h.g);
+    // True residuals incur cancellation at the scale of H*x, even when g is
+    // small. Use the same scale as the original-system qualification below.
+    let tolerance = |x: &[DVector<f64>]| {
+        config.absolute_tolerance + config.relative_tolerance * (matrix_norm * norm(x) + rhs_norm)
+    };
+    if norm(&r) <= tolerance(&x) && backward(h, &x) <= config.backward_error_target {
         return (x, Termination::Converged, 0);
     }
     let mut z = precondition(&r);
@@ -248,7 +254,7 @@ fn pcg(
             return (x, Termination::NumericalBreakdown, k + 1);
         }
         let current = norm(&r);
-        if current <= tolerance && backward(h, &x) <= config.backward_error_target {
+        if current <= tolerance(&x) && backward(h, &x) <= config.backward_error_target {
             return (x, Termination::Converged, k + 1);
         }
         if current >= previous * (1. - 8. * f64::EPSILON) {
@@ -490,7 +496,9 @@ impl PreparedProblem {
                 let residual = original.residual(&q);
                 let before = norm(&residual);
                 if before
-                    <= config.absolute_tolerance + config.relative_tolerance * norm(&original.g)
+                    <= config.absolute_tolerance
+                        + config.relative_tolerance
+                            * (original.norm() * norm(&q) + norm(&original.g))
                 {
                     break;
                 }
