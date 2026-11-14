@@ -94,7 +94,8 @@ The `generate-stubs` pre-commit hook runs this check, including in CI.
 `src_python/cave_closure/__init__.pyi` re-exports the generated API and
 describes the Python helpers.
 
-See [the numerical contract](docs/numerics.md),
+See [measurement-based loop closure](docs/loop-closure.md),
+[the numerical contract](docs/numerics.md),
 [interchange contract](docs/interchange.md), and
 [artifact qualification](docs/artifacts.md). The
 [persisted fixture corpus](docs/fixtures.md) checks every solver against

@@ -56,64 +56,187 @@ impl CancellationToken {
         self.inner.is_cancelled()
     }
 }
+enum PreparedInner {
+    Standard(Box<PreparedProblem>),
+    LoopClosurePreparation(loop_closure::LoopClosurePreparation),
+}
 #[gen_stub_pyclass]
 #[pyclass(frozen, module = "cave_closure._native")]
 struct Prepared {
-    inner: Arc<PreparedProblem>,
+    inner: Arc<PreparedInner>,
 }
 #[gen_stub_pymethods]
 #[pymethods]
 impl Prepared {
-    #[pyo3(signature=(*, max_iterations=10000, cancellation=None))]
+    /// Inspect the immutable numerical inputs (one entry per independent axis).
+    fn normalized_json(&self) -> PyResult<Vec<String>> {
+        let sources: Vec<&NormalizedProblem> = match self.inner.as_ref() {
+            PreparedInner::Standard(p) => vec![p.normalized_problem()],
+            PreparedInner::LoopClosurePreparation(
+                loop_closure::LoopClosurePreparation::Standard(p),
+            ) => {
+                vec![p.normalized_problem()]
+            }
+            PreparedInner::LoopClosurePreparation(loop_closure::LoopClosurePreparation::Axes {
+                axes,
+                ..
+            }) => axes.iter().map(|p| p.normalized_problem()).collect(),
+            PreparedInner::LoopClosurePreparation(loop_closure::LoopClosurePreparation::Graph(
+                graph,
+            )) => {
+                let source = graph.normalized_problem().map_err(error)?;
+                return serde_json::to_string(&source)
+                    .map(|s| vec![s])
+                    .map_err(|e| error(e.into()));
+            }
+        };
+        sources
+            .into_iter()
+            .map(|p| serde_json::to_string(p).map_err(|e| error(e.into())))
+            .collect()
+    }
+    #[pyo3(signature=(*, max_iterations=None, cancellation=None))]
     fn solve(
         &self,
         py: Python<'_>,
-        max_iterations: usize,
+        max_iterations: Option<usize>,
         cancellation: Option<&CancellationToken>,
     ) -> PyResult<Report> {
         let prepared = Arc::clone(&self.inner);
-        let control = cancellation.map_or_else(SolveControl::default, |c| c.inner.clone());
-        let worker_control = control.clone();
-        let (sender, mut receiver) = mpsc::sync_channel(1);
-        let worker = std::thread::spawn(move || {
-            let result = prepared.solve(
+        run_worker(py, cancellation, move |control| match prepared.as_ref() {
+            PreparedInner::Standard(p) => p.solve(
                 &SolveConfig {
-                    max_iterations,
+                    max_iterations: max_iterations.unwrap_or(10000),
                     ..Default::default()
                 },
                 &mut Workspace::default(),
-                &worker_control,
-            );
-            let _ = sender.send(result);
-        });
-        let result = loop {
-            let (returned, event) = py.detach(move || {
-                let event = receiver.recv_timeout(Duration::from_millis(20));
-                (receiver, event)
-            });
-            receiver = returned;
-            match event {
-                Ok(result) => break result,
-                Err(mpsc::RecvTimeoutError::Timeout) => {
-                    if let Err(signal) = py.check_signals() {
-                        control.cancel();
-                        py.detach(|| {
-                            let _ = worker.join();
-                        });
-                        return Err(signal);
-                    }
-                }
-                Err(mpsc::RecvTimeoutError::Disconnected) => {
-                    return Err(PyRuntimeError::new_err("solver worker failed"));
-                }
-            }
-        };
-        py.detach(|| worker.join())
-            .map_err(|_| PyRuntimeError::new_err("solver worker panicked"))?;
-        py.check_signals()?;
-        result.map(|inner| Report { inner }).map_err(error)
+                &control,
+            ),
+            PreparedInner::LoopClosurePreparation(p) => p.solve(max_iterations, &control),
+        })
     }
 }
+fn run_worker(
+    py: Python<'_>,
+    cancellation: Option<&CancellationToken>,
+    operation: impl FnOnce(SolveControl) -> Result<SolveReport, Error> + Send + 'static,
+) -> PyResult<Report> {
+    let control = cancellation.map_or_else(SolveControl::default, |c| c.inner.clone());
+    let worker_control = control.clone();
+    let (sender, mut receiver) = mpsc::sync_channel(1);
+    let worker = std::thread::spawn(move || {
+        let _ = sender.send(operation(worker_control));
+    });
+    let result = loop {
+        let (returned, event) = py.detach(move || {
+            let event = receiver.recv_timeout(Duration::from_millis(20));
+            (receiver, event)
+        });
+        receiver = returned;
+        match event {
+            Ok(result) => break result,
+            Err(mpsc::RecvTimeoutError::Timeout) => {
+                if let Err(signal) = py.check_signals() {
+                    control.cancel();
+                    py.detach(|| {
+                        let _ = worker.join();
+                    });
+                    return Err(signal);
+                }
+            }
+            Err(mpsc::RecvTimeoutError::Disconnected) => {
+                return Err(PyRuntimeError::new_err("solver worker failed"));
+            }
+        }
+    };
+    py.detach(|| worker.join())
+        .map_err(|_| PyRuntimeError::new_err("solver worker panicked"))?;
+    py.check_signals()?;
+    result.map(|inner| Report { inner }).map_err(error)
+}
+
+fn adjustment_input(
+    input: &Bound<'_, pyo3::types::PyDict>,
+) -> PyResult<loop_closure::LoopClosureInput> {
+    use loop_closure::{LoopClosureInput, LoopClosureOptions};
+    use pyo3::types::PyDict;
+    macro_rules! field {
+        ($map:expr,$name:literal) => {
+            $map.get_item($name)?
+                .ok_or_else(|| ValidationError::new_err(concat!("missing ", $name)))?
+                .extract()?
+        };
+    }
+    let options = input
+        .get_item("options")?
+        .ok_or_else(|| ValidationError::new_err("missing options"))?
+        .cast_into::<PyDict>()?;
+    if input.len() != 7 || options.len() != 15 {
+        return Err(ValidationError::new_err(
+            "unexpected loop-closure request fields",
+        ));
+    }
+    let algorithm: String = field!(options, "algorithm");
+    let algorithm = serde_json::from_value(serde_json::Value::String(algorithm))
+        .map_err(|e| ValidationError::new_err(e.to_string()))?;
+    Ok(LoopClosureInput {
+        station_ids: field!(input, "station_ids"),
+        measurements: field!(input, "measurements"),
+        initial_positions: field!(input, "initial_positions"),
+        controls: field!(input, "controls"),
+        relationships: field!(input, "relationships"),
+        source_order: field!(input, "source_order"),
+        options: LoopClosureOptions {
+            mode: field!(options, "mode"),
+            algorithm,
+            weighting: field!(options, "weighting"),
+            method: field!(options, "method"),
+            sigma_m: field!(options, "sigma_m"),
+            weight_cap: field!(options, "weight_cap"),
+            sigma_length_m: field!(options, "sigma_length_m"),
+            sigma_azimuth_deg: field!(options, "sigma_azimuth_deg"),
+            average_azimuths: field!(options, "average_azimuths"),
+            anchor_floating: field!(options, "anchor_floating"),
+            preserve_centroids: field!(options, "preserve_centroids"),
+            fix_control_depths: field!(options, "fix_control_depths"),
+            max_iterations: field!(options, "max_iterations"),
+            absolute_tolerance: field!(options, "absolute_tolerance"),
+            relative_tolerance: field!(options, "relative_tolerance"),
+        },
+    })
+}
+/// Copy an loop-closure request and prepare all numerical factors in Rust.
+#[gen_stub_pyfunction(module = "cave_closure._native")]
+#[pyfunction]
+fn prepare_loop_closure(
+    py: Python<'_>,
+    input: &Bound<'_, pyo3::types::PyDict>,
+) -> PyResult<Prepared> {
+    let input = adjustment_input(input)?;
+    let prepared = py
+        .detach(move || loop_closure::prepare_loop_closure(input, &SolveControl::default()))
+        .map_err(error)?;
+    Ok(Prepared {
+        inner: Arc::new(PreparedInner::LoopClosurePreparation(prepared)),
+    })
+}
+/// One crossing: copy, prepare, solve and export the complete result in Rust.
+#[gen_stub_pyfunction(module = "cave_closure._native")]
+#[pyfunction]
+#[pyo3(signature=(input, *, max_iterations=None, cancellation=None))]
+fn solve_loop_closure_json(
+    py: Python<'_>,
+    input: &Bound<'_, pyo3::types::PyDict>,
+    max_iterations: Option<usize>,
+    cancellation: Option<&CancellationToken>,
+) -> PyResult<String> {
+    let input = adjustment_input(input)?;
+    let report = run_worker(py, cancellation, move |control| {
+        loop_closure::prepare_loop_closure(input, &control)?.solve(max_iterations, &control)
+    })?;
+    py.detach(move || report.inner.to_json()).map_err(error)
+}
+
 #[gen_stub_pyclass]
 #[pyclass(frozen, module = "cave_closure._native")]
 struct Report {
@@ -174,7 +297,7 @@ fn prepare_json(
         },
     )
     .map(|inner| Prepared {
-        inner: Arc::new(inner),
+        inner: Arc::new(PreparedInner::Standard(Box::new(inner))),
     })
     .map_err(error)
 }
@@ -323,7 +446,7 @@ fn prepare_arrays(
         },
     )
     .map(|inner| Prepared {
-        inner: Arc::new(inner),
+        inner: Arc::new(PreparedInner::Standard(Box::new(inner))),
     })
     .map_err(error)
 }
@@ -341,6 +464,8 @@ fn _native(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<CancellationToken>()?;
     m.add_function(wrap_pyfunction!(prepare_json, m)?)?;
     m.add_function(wrap_pyfunction!(prepare_arrays, m)?)?;
+    m.add_function(wrap_pyfunction!(prepare_loop_closure, m)?)?;
+    m.add_function(wrap_pyfunction!(solve_loop_closure_json, m)?)?;
     Ok(())
 }
 

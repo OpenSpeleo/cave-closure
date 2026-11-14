@@ -21,6 +21,8 @@ from cave_closure._native import (
     ValidationError,
     prepare_arrays,
     prepare_json,
+    prepare_loop_closure,
+    solve_loop_closure_json,
 )
 
 __all__ = [
@@ -34,6 +36,8 @@ __all__ = [
     "IncompleteResultError",
     "coordinates",
     "coordinate_buffer",
+    "prepare_loop_closure",
+    "solve_loop_closure_json",
     "prepare_arrays",
     "prepare_buffers",
     "prepare_json",

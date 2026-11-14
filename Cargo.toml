@@ -14,7 +14,7 @@ include = [
     "/src_python/**/py.typed",
     "/benches/**",
     "/examples/**",
-    "/tests/core.rs",
+    "/tests/*.rs",
     "/tests/fixtures/controlled_tree.json",
     "/schemas/**",
     "/docs/*.md",

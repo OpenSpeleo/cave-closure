@@ -35,6 +35,13 @@ pub struct PreparedProblem {
     pub(crate) calibrated: bool,
 }
 
+impl PreparedProblem {
+    /// Immutable normalized source evidence owned by this preparation.
+    pub fn normalized_problem(&self) -> &NormalizedProblem {
+        &self.source
+    }
+}
+
 pub(crate) fn precision(cov: DMatrix<f64>, context: &str) -> Result<DMatrix<f64>, Error> {
     if cov.nrows() == 0 || cov.nrows() != cov.ncols() || !finite(cov.iter().copied()) {
         return Err(invalid(format!(

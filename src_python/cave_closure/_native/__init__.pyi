@@ -15,6 +15,8 @@ __all__ = [
     "ValidationError",
     "prepare_arrays",
     "prepare_json",
+    "prepare_loop_closure",
+    "solve_loop_closure_json",
 ]
 
 @typing.final
@@ -28,10 +30,14 @@ class IncompleteResultError(SolveError): ...
 
 @typing.final
 class Prepared:
+    def normalized_json(self) -> builtins.list[builtins.str]:
+        r"""
+        Inspect the immutable numerical inputs (one entry per independent axis).
+        """
     def solve(
         self,
         *,
-        max_iterations: builtins.int = 10000,
+        max_iterations: typing.Optional[builtins.int] = None,
         cancellation: typing.Optional[CancellationToken] = None,
     ) -> Report: ...
 
@@ -111,3 +117,17 @@ def prepare_json(
     max_stations: builtins.int = 1000000,
     max_observations: builtins.int = 4000000,
 ) -> Prepared: ...
+def prepare_loop_closure(input: dict) -> Prepared:
+    r"""
+    Copy an loop-closure request and prepare all numerical factors in Rust.
+    """
+
+def solve_loop_closure_json(
+    input: dict,
+    *,
+    max_iterations: typing.Optional[builtins.int] = None,
+    cancellation: typing.Optional[CancellationToken] = None,
+) -> builtins.str:
+    r"""
+    One crossing: copy, prepare, solve and export the complete result in Rust.
+    """

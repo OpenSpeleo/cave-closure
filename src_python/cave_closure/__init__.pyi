@@ -11,6 +11,8 @@ from ._native import SolveError as SolveError
 from ._native import ValidationError as ValidationError
 from ._native import prepare_arrays as prepare_arrays
 from ._native import prepare_json as prepare_json
+from ._native import prepare_loop_closure as prepare_loop_closure
+from ._native import solve_loop_closure_json as solve_loop_closure_json
 
 class LoopClosureMode(StrEnum):
     SPATIAL = "spatial"

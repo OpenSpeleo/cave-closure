@@ -219,7 +219,7 @@ fn pcg(
     };
     let mut r = h.g.clone();
     let tolerance = config.absolute_tolerance + config.relative_tolerance * norm(&h.g);
-    if norm(&r) <= tolerance {
+    if norm(&r) <= tolerance && backward(h, &x) <= config.backward_error_target {
         return (x, Termination::Converged, 0);
     }
     let mut z = precondition(&r);
