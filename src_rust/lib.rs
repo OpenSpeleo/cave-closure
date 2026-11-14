@@ -2,6 +2,7 @@
 //! Gaussian covariance models and numerical backends are separate choices.
 mod graph;
 pub mod json;
+pub mod l1;
 pub mod loop_closure;
 mod model;
 pub mod normalize;

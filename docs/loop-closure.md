@@ -85,3 +85,63 @@ Native unit tests check anchor-blocked BFS selection, shared traverses, parallel
 edges, zero quality, length floors, compensated norms and fused-product
 rounding. `tests/core.rs` exercises the underlying Gaussian model and numerical
 backends. Both default and all-features Cargo test configurations must pass.
+
+## Inverse-length weighted L1 loop closure
+
+`cave_closure::l1` supplies least-absolute-deviations loop closure. Unlike the
+Gaussian models, it minimizes `sum(weight * abs(residual))` independently on X,
+Y and Z. The relative weight of a leg is
+`1 / max(measured_displacement_length_m, length_floor_m)`. Errors can
+concentrate on a few weaker legs instead of being spread as squared residuals.
+
+This is the formulation previously used by Compass's `SparseSolver` in
+`compass_lib/solver/sparse.py`, before its Rust migration. That implementation
+used `scipy.optimize.linprog`; the library now assembles a sparse column matrix
+and calls HiGHS directly from Rust. Its backend dependency is pinned in
+`Cargo.toml` and `Cargo.lock`. There is no Python optimizer in the solve path.
+The native model retains the source's centered coordinates, free-station order,
+positive/negative slack-column order, presolve and dual-simplex settings. All
+anchor coordinates stay exact. Failed or interrupted solves raise an error; they
+never substitute guessed geographic coordinates.
+
+Rust callers use `prepare_l1_loop_closure(L1Input)` and reuse the immutable
+`L1Prepared`. Python exposes `prepare_l1_loop_closure(request)` and
+`solve_l1_loop_closure_json(request)`. The latter copies, validates, assembles,
+solves every axis and serializes the complete result in one library call. It
+releases the interpreter while computing and supports `CancellationToken` and
+Python signals through HiGHS interrupt callbacks. Each solve owns its own model;
+shared preparations can be solved concurrently.
+
+The Python request has five fields:
+
+- `station_ids`: unique nonempty opaque identifiers.
+- `observations`: tuples `(id, start_index, stop_index, displacement_or_None)`.
+  Displacements are ENU triples in metres. `None` explicitly requests the
+  initial endpoint-coordinate difference.
+- `initial_positions`: owned ENU triples in metres.
+- `anchor_indices`: stations fixed at their initial coordinates.
+- `options`: `mode`, `length_floor_m`, `minimum_anchor_count`,
+  `deduplicate_edges`, and `max_iterations` (an integer or `None`).
+
+Every option is explicit. The Compass compatibility configuration uses spatial
+mode, a 0.1 metre length floor, a minimum of two anchors, first-observation
+undirected-edge deduplication, and no iteration limit. With fewer anchors,
+initial positions are retained. Horizontal mode adjusts XY and preserves each
+initial Z. Deduplication can be disabled to retain parallel observations. The
+source dense-assignment behavior of self-observations is retained for
+compatibility. This graph API takes displacement observations; it does not infer
+raw instrument calibration or protected-shot relationships. Consumers must
+choose the graph model matching their format semantics.
+
+The objective is an uncalibrated L1 objective. Gaussian variance, redundancy and
+backward-error statistics are not reported for it; zero placeholders in those
+fields are accompanied by an explicit diagnostic warning. Native builds enable
+this model with the `l1` Cargo feature; Python builds include that feature by
+default. Building the backend requires CMake, a C++ compiler and libclang for
+the C bindings. Wheels contain the compiled backend.
+
+`tests/loop_closure_l1.rs` checks analytical optima distinct from least squares,
+XYZ controls, depth preservation, reversed and repeated legs, zero lengths,
+source-compatible self-observations, malformed inputs, cancellation and
+concurrent reuse. `tests/test_loop_closure_l1.py` checks the owned Python API,
+single-call/prepared agreement, exception types and immutable source evidence.

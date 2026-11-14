@@ -36,6 +36,7 @@ generate-stubs = ["python"]
 abi3 = ["python", "pyo3/abi3-py311"]
 abi3t = ["python", "pyo3/abi3t-py315"]
 sparse-direct = ["dep:faer"]
+l1 = ["dep:highs-sys"]
 
 [dependencies]
 nalgebra = "0.35"
@@ -45,6 +46,7 @@ thiserror = "2"
 schemars = "1"
 ts-rs = { version = "7", features = ["no-serde-warnings"] }
 faer = { version = "0.24", optional = true }
+highs-sys = { version = "=1.14.3", optional = true }
 pyo3 = { version = "0.30", optional = true }
 pyo3-stub-gen = { version = "0.23.2", optional = true }
 

@@ -58,6 +58,7 @@ impl CancellationToken {
 }
 enum PreparedInner {
     Standard(Box<PreparedProblem>),
+    L1(Box<l1::L1Prepared>),
     LoopClosurePreparation(loop_closure::LoopClosurePreparation),
 }
 #[gen_stub_pyclass]
@@ -72,6 +73,7 @@ impl Prepared {
     fn normalized_json(&self) -> PyResult<Vec<String>> {
         let sources: Vec<&NormalizedProblem> = match self.inner.as_ref() {
             PreparedInner::Standard(p) => vec![p.normalized_problem()],
+            PreparedInner::L1(p) => return p.input_json().map(|s| vec![s]).map_err(error),
             PreparedInner::LoopClosurePreparation(
                 loop_closure::LoopClosurePreparation::Standard(p),
             ) => {
@@ -113,6 +115,7 @@ impl Prepared {
                 &control,
             ),
             PreparedInner::LoopClosurePreparation(p) => p.solve(max_iterations, &control),
+            PreparedInner::L1(p) => p.solve(max_iterations, &control),
         })
     }
 }
@@ -155,7 +158,7 @@ fn run_worker(
     result.map(|inner| Report { inner }).map_err(error)
 }
 
-fn adjustment_input(
+fn loop_closure_input(
     input: &Bound<'_, pyo3::types::PyDict>,
 ) -> PyResult<loop_closure::LoopClosureInput> {
     use loop_closure::{LoopClosureInput, LoopClosureOptions};
@@ -205,14 +208,77 @@ fn adjustment_input(
         },
     })
 }
-/// Copy an loop-closure request and prepare all numerical factors in Rust.
+fn l1_input(input: &Bound<'_, pyo3::types::PyDict>) -> PyResult<l1::L1Input> {
+    use pyo3::types::PyDict;
+    macro_rules! field {
+        ($map:expr,$name:literal) => {
+            $map.get_item($name)?
+                .ok_or_else(|| ValidationError::new_err(concat!("missing ", $name)))?
+                .extract()?
+        };
+    }
+    let options = input
+        .get_item("options")?
+        .ok_or_else(|| ValidationError::new_err("missing options"))?
+        .cast_into::<PyDict>()?;
+    if input.len() != 5 || options.len() != 5 {
+        return Err(ValidationError::new_err("unexpected L1 request fields"));
+    }
+    Ok(l1::L1Input {
+        station_ids: field!(input, "station_ids"),
+        observations: field!(input, "observations"),
+        initial_positions: field!(input, "initial_positions"),
+        anchor_indices: field!(input, "anchor_indices"),
+        options: l1::L1Options {
+            mode: field!(options, "mode"),
+            length_floor_m: field!(options, "length_floor_m"),
+            minimum_anchor_count: field!(options, "minimum_anchor_count"),
+            deduplicate_edges: field!(options, "deduplicate_edges"),
+            max_iterations: field!(options, "max_iterations"),
+        },
+    })
+}
+
+/// Copy and validate an owned inverse-length L1 graph.
+#[gen_stub_pyfunction(module = "cave_closure._native")]
+#[pyfunction]
+fn prepare_l1_loop_closure(
+    py: Python<'_>,
+    input: &Bound<'_, pyo3::types::PyDict>,
+) -> PyResult<Prepared> {
+    let input = l1_input(input)?;
+    let prepared = py
+        .detach(move || l1::prepare_l1_loop_closure(input))
+        .map_err(error)?;
+    Ok(Prepared {
+        inner: Arc::new(PreparedInner::L1(Box::new(prepared))),
+    })
+}
+/// One crossing for validation, LP assembly, HiGHS solves and complete output.
+#[gen_stub_pyfunction(module = "cave_closure._native")]
+#[pyfunction]
+#[pyo3(signature=(input,*,max_iterations=None,cancellation=None))]
+fn solve_l1_loop_closure_json(
+    py: Python<'_>,
+    input: &Bound<'_, pyo3::types::PyDict>,
+    max_iterations: Option<usize>,
+    cancellation: Option<&CancellationToken>,
+) -> PyResult<String> {
+    let input = l1_input(input)?;
+    let report = run_worker(py, cancellation, move |control| {
+        l1::prepare_l1_loop_closure(input)?.solve(max_iterations, &control)
+    })?;
+    py.detach(move || report.inner.to_json()).map_err(error)
+}
+
+/// Copy a loop-closure request and prepare all numerical factors in Rust.
 #[gen_stub_pyfunction(module = "cave_closure._native")]
 #[pyfunction]
 fn prepare_loop_closure(
     py: Python<'_>,
     input: &Bound<'_, pyo3::types::PyDict>,
 ) -> PyResult<Prepared> {
-    let input = adjustment_input(input)?;
+    let input = loop_closure_input(input)?;
     let prepared = py
         .detach(move || loop_closure::prepare_loop_closure(input, &SolveControl::default()))
         .map_err(error)?;
@@ -230,7 +296,7 @@ fn solve_loop_closure_json(
     max_iterations: Option<usize>,
     cancellation: Option<&CancellationToken>,
 ) -> PyResult<String> {
-    let input = adjustment_input(input)?;
+    let input = loop_closure_input(input)?;
     let report = run_worker(py, cancellation, move |control| {
         loop_closure::prepare_loop_closure(input, &control)?.solve(max_iterations, &control)
     })?;
@@ -466,6 +532,8 @@ fn _native(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(prepare_arrays, m)?)?;
     m.add_function(wrap_pyfunction!(prepare_loop_closure, m)?)?;
     m.add_function(wrap_pyfunction!(solve_loop_closure_json, m)?)?;
+    m.add_function(wrap_pyfunction!(prepare_l1_loop_closure, m)?)?;
+    m.add_function(wrap_pyfunction!(solve_l1_loop_closure_json, m)?)?;
     Ok(())
 }
 

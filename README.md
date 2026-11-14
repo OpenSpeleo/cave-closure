@@ -6,6 +6,11 @@ Tauri, or Python dependency. This source tree is standalone; upstream and
 registry identities must be supplied before publication or submodule
 registration.
 
+Inverse-length weighted L1 (least-absolute-deviations) loop closure is also
+available through the owned measurement API; see
+[measurement-based loop closure](docs/loop-closure.md). All numerical work runs
+in the native library, including sparse LP assembly and the HiGHS solve.
+
 The caller selects spatial or marginal-horizontal loop closure. Horizontal mode
 requires an explicit preserved-Z value for every station. Covariance models
 include supplied SPD matrices, equal isotropic variance, length-proportional

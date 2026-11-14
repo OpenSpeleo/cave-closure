@@ -16,6 +16,9 @@ allow = [
 ]
 # Stub generation uses RustPython's parser and Unicode name data.
 exceptions = [
+  # L1's C bindings and their libclang loader are build-time dependencies.
+  { crate = "bindgen", allow = ["BSD-3-Clause"] },
+  { crate = "libloading", allow = ["ISC"] },
   { crate = "tiny-keccak", allow = ["CC0-1.0"] },
   { crate = "unicode_names2", allow = ["MIT", "Unicode-DFS-2016"] },
 ]

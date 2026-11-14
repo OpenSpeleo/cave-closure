@@ -15,7 +15,9 @@ __all__ = [
     "ValidationError",
     "prepare_arrays",
     "prepare_json",
+    "prepare_l1_loop_closure",
     "prepare_loop_closure",
+    "solve_l1_loop_closure_json",
     "solve_loop_closure_json",
 ]
 
@@ -117,9 +119,24 @@ def prepare_json(
     max_stations: builtins.int = 1000000,
     max_observations: builtins.int = 4000000,
 ) -> Prepared: ...
+def prepare_l1_loop_closure(input: dict) -> Prepared:
+    r"""
+    Copy and validate an owned inverse-length L1 graph.
+    """
+
 def prepare_loop_closure(input: dict) -> Prepared:
     r"""
-    Copy an loop-closure request and prepare all numerical factors in Rust.
+    Copy a loop-closure request and prepare all numerical factors in Rust.
+    """
+
+def solve_l1_loop_closure_json(
+    input: dict,
+    *,
+    max_iterations: typing.Optional[builtins.int] = None,
+    cancellation: typing.Optional[CancellationToken] = None,
+) -> builtins.str:
+    r"""
+    One crossing for validation, LP assembly, HiGHS solves and complete output.
     """
 
 def solve_loop_closure_json(

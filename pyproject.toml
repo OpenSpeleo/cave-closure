@@ -34,7 +34,7 @@ cache-keys = [
 ]
 
 [tool.maturin]
-features = ["python", "sparse-direct", "pyo3/extension-module"]
+features = ["python", "sparse-direct", "l1", "pyo3/extension-module"]
 editable-profile = "dev"
 python-source = "src_python"
 module-name = "cave_closure._native"
